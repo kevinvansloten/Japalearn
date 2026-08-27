@@ -7,6 +7,8 @@ and how you want to be asked.
 Built with React, TypeScript and Vite. Everything runs in the browser — no
 account, no backend, no network calls. Progress is kept in `localStorage`.
 
+![A kanji reading card answered correctly, with the on and kun readings and two example words revealed below](docs/screenshots/quiz.png)
+
 ## Quick start
 
 ```bash
@@ -55,6 +57,11 @@ than an alphabetical slice:
 
 Turn whole groups on or off, then exclude individual kanji you already know. Each
 kanji carries its meanings, on'yomi, kun'yomi and two vocabulary words.
+
+![The kanji picker with the time group expanded, each character showing a coloured mastery dot](docs/screenshots/setup.png)
+
+The dot under each character is your lifetime accuracy on it — green, amber or
+red — so you can see at a glance what to keep in and what to drop.
 
 Four ways to be drilled, each independently set to **typing** or **multiple
 choice**:
@@ -106,9 +113,10 @@ articles and a leading "to", so `go` and `to go` both count.
 ## Progress
 
 Lifetime accuracy per item is stored in `localStorage`. It powers the *giving you
-the most trouble* list on the home screen and the green/amber/red mastery dots in
-the kanji picker, so you can see at a glance what to exclude and what to drill.
-There is a reset button on the home screen.
+the most trouble* list on the home screen and the mastery dots in the kanji
+picker. There is a reset button on the home screen.
+
+![The home screen showing both decks with lifetime accuracy and a list of the weakest kanji](docs/screenshots/home.png)
 
 ## Project layout
 
@@ -120,6 +128,7 @@ src/lib/buildCards  turns a dataset + settings into practice cards
 src/lib/storage   localStorage persistence
 src/components/   home, the two setup screens, quiz, results
 tests/            romaji and session-engine tests
+scripts/          regenerates the README screenshots
 ```
 
 The session engine is deck-agnostic: both decks compile down to a list of
