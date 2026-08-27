@@ -9,7 +9,7 @@ import {
   type SessionOptions,
   type SessionState,
 } from '../lib/session';
-import { recordSession } from '../lib/storage';
+import { recordReview, recordSession } from '../lib/storage';
 import { romajiToKana } from '../lib/romaji';
 import { speak, stopSpeaking, useJapaneseVoice } from '../lib/speech';
 import { Results } from './Results';
@@ -21,22 +21,29 @@ interface Props {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  /** back to the setup screen for this deck */
-  onEdit: () => void;
+  /** back to the setup screen for this deck, or absent for a review */
+  onEdit?: () => void;
   onHome: () => void;
+  /** a scheduled review, so results move items along their Leitner boxes */
+  scheduled?: boolean;
 }
 
-export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
+export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props) {
   const [state, setState] = useState<SessionState>(() => createSession(cards, options));
   const [draft, setDraft] = useState('');
   const [autoAdvance, setAutoAdvance] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasVoice = useJapaneseVoice();
+  // A review reschedules once. Going again, or drilling the ones you missed,
+  // is ordinary practice — otherwise a second pass would push every box up a
+  // rung again on the same day.
+  const [reschedules, setReschedules] = useState(scheduled);
 
   const dispatch = (action: SessionAction) => setState((s) => sessionReducer(s, action));
 
   const restart = (deck: Card[], nextOptions: SessionOptions = options) => {
     setDraft('');
+    setReschedules(false);
     setState(createSession(deck, nextOptions));
   };
 
@@ -77,7 +84,8 @@ export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
       const prior = byItem[itemId] ?? { right: 0, wrong: 0 };
       byItem[itemId] = { right: prior.right + result.right, wrong: prior.wrong + result.wrong };
     }
-    recordSession(byItem);
+    if (reschedules) recordReview(byItem);
+    else recordSession(byItem);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase]);
 
@@ -147,9 +155,11 @@ export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
           </div>
         </div>
         <div className="row">
-          <button type="button" className="btn ghost" onClick={onEdit}>
-            Settings
-          </button>
+          {onEdit && (
+            <button type="button" className="btn ghost" onClick={onEdit}>
+              Settings
+            </button>
+          )}
           <button type="button" className="btn" onClick={() => dispatch({ type: 'finish' })}>
             Finish
           </button>

@@ -5,7 +5,7 @@ interface Props {
   state: SessionState;
   onRestart: () => void;
   onPractiseMissed: () => void;
-  onEdit: () => void;
+  onEdit?: () => void;
   onHome: () => void;
 }
 
@@ -77,9 +77,11 @@ export function Results({ title, state, onRestart, onPractiseMissed, onEdit, onH
         >
           Go again
         </button>
-        <button type="button" className="btn ghost" onClick={onEdit}>
-          Change settings
-        </button>
+        {onEdit && (
+          <button type="button" className="btn ghost" onClick={onEdit}>
+            Change settings
+          </button>
+        )}
         <button type="button" className="btn ghost" onClick={onHome}>
           Home
         </button>

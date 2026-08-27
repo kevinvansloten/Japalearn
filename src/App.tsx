@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KANA_GROUPS } from './data/kana';
 import type { KanaConfig, KanjiConfig } from './lib/buildCards';
 import type { Card, SessionOptions } from './lib/session';
-import { loadPref, savePref } from './lib/storage';
+import { planReview } from './lib/review';
+import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
 import { Home } from './components/Home';
 import { KanaSetup } from './components/KanaSetup';
 import { KanjiSetup } from './components/KanjiSetup';
@@ -33,7 +34,9 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back: 'kana' | 'kanji';
+  back?: 'kana' | 'kanji';
+  /** results move items along their Leitner boxes */
+  scheduled?: boolean;
 }
 
 export default function App() {
@@ -58,10 +61,22 @@ export default function App() {
   useEffect(() => savePref('kana', kanaConfig), [kanaConfig]);
   useEffect(() => savePref('kanji', kanjiConfig), [kanjiConfig]);
 
-  const start = (back: 'kana' | 'kanji', title: string, cards: Card[], options: SessionOptions) => {
-    setRun((previous) => ({ id: (previous?.id ?? 0) + 1, title, cards, options, back }));
+  const start = (
+    title: string,
+    cards: Card[],
+    options: SessionOptions,
+    extra: { back?: 'kana' | 'kanji'; scheduled?: boolean } = {},
+  ) => {
+    setRun((previous) => ({ id: (previous?.id ?? 0) + 1, title, cards, options, ...extra }));
     setScreen('quiz');
   };
+
+  // Recomputed whenever we land back on the home screen, so finishing a review
+  // immediately reflects the new schedule.
+  const plan = useMemo(
+    () => planReview(kanaConfig, kanjiConfig, loadItemStats(), newAllowanceToday()),
+    [kanaConfig, kanjiConfig, version],
+  );
 
   const goHome = () => {
     setScreen('home');
@@ -91,6 +106,10 @@ export default function App() {
       {screen === 'home' && (
         <Home
           key={version}
+          plan={plan}
+          onReview={() =>
+            start('Review', plan.cards, { flow: 'mistakes', order: 'shuffled' }, { scheduled: true })
+          }
           onKana={() => setScreen('kana')}
           onKanji={() => setScreen('kanji')}
           onReset={() => setVersion((v) => v + 1)}
@@ -103,10 +122,12 @@ export default function App() {
           onChange={setKanaConfig}
           onHome={goHome}
           onStart={(cards) =>
-            start('kana', 'Hiragana & katakana', cards, {
-              flow: kanaConfig.flow,
-              order: kanaConfig.order,
-            })
+            start(
+              'Hiragana & katakana',
+              cards,
+              { flow: kanaConfig.flow, order: kanaConfig.order },
+              { back: 'kana' },
+            )
           }
         />
       )}
@@ -117,10 +138,12 @@ export default function App() {
           onChange={setKanjiConfig}
           onHome={goHome}
           onStart={(cards) =>
-            start('kanji', 'Kanji — N5', cards, {
-              flow: kanjiConfig.flow,
-              order: kanjiConfig.order,
-            })
+            start(
+              'Kanji — N5',
+              cards,
+              { flow: kanjiConfig.flow, order: kanjiConfig.order },
+              { back: 'kanji' },
+            )
           }
         />
       )}
@@ -131,7 +154,8 @@ export default function App() {
           title={run.title}
           cards={run.cards}
           options={run.options}
-          onEdit={() => setScreen(run.back)}
+          scheduled={run.scheduled}
+          onEdit={run.back ? () => setScreen(run.back!) : undefined}
           onHome={goHome}
         />
       )}

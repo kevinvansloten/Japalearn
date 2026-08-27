@@ -1,9 +1,13 @@
 import { useMemo } from 'react';
 import { ALL_KANA } from '../data/kana';
 import { ALL_KANJI } from '../data/kanji';
+import type { ReviewPlan } from '../lib/review';
+import { describeGap, nextDueAt } from '../lib/schedule';
 import { itemAccuracy, loadItemStats, resetProgress } from '../lib/storage';
 
 interface Props {
+  plan: ReviewPlan;
+  onReview: () => void;
   onKana: () => void;
   onKanji: () => void;
   onReset: () => void;
@@ -15,8 +19,10 @@ interface Summary {
   accuracy: number | null;
 }
 
-export function Home({ onKana, onKanji, onReset }: Props) {
+export function Home({ plan, onReview, onKana, onKanji, onReset }: Props) {
   const stats = useMemo(() => loadItemStats(), []);
+  const now = Date.now();
+  const upcoming = nextDueAt(stats, now);
 
   const summarise = (ids: string[]): Summary => {
     let right = 0;
@@ -53,6 +59,38 @@ export function Home({ onKana, onKanji, onReset }: Props) {
         Drill the kana until they are automatic, then work through the N5 kanji in groups. Pick
         what to include, how you want to be asked, and how the session should run.
       </p>
+
+      <section className="review-panel" data-ready={plan.cards.length > 0}>
+        <div>
+          <h2>{plan.cards.length ? 'Ready to review' : 'Nothing due'}</h2>
+          {plan.cards.length ? (
+            <p className="hint">
+              {plan.due > 0 && (
+                <>
+                  <b>{plan.due}</b> to review
+                </>
+              )}
+              {plan.due > 0 && plan.fresh > 0 && ' · '}
+              {plan.fresh > 0 && (
+                <>
+                  <b>{plan.fresh}</b> new
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="hint">
+              {upcoming
+                ? `Next review ${describeGap(now, upcoming)}.`
+                : 'Pick a deck below and practise — what you get right starts the clock.'}
+            </p>
+          )}
+        </div>
+        {plan.cards.length > 0 && (
+          <button type="button" className="btn primary big" onClick={onReview}>
+            Review {plan.cards.length}
+          </button>
+        )}
+      </section>
 
       <div className="home-grid">
         <button type="button" className="home-card" onClick={onKana}>

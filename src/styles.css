@@ -630,6 +630,33 @@ input {
 
 /* --------------------------------------------------------------- home */
 
+.review-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+
+.review-panel[data-ready='true'] {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-soft), var(--bg-raised) 70%);
+}
+
+.review-panel h2 {
+  margin: 0 0 2px;
+  font-size: 17px;
+}
+
+.review-panel .hint b {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
