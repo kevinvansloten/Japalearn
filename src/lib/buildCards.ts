@@ -1,3 +1,4 @@
+import { KANA_LOOKALIKES, KANJI_LOOKALIKES } from '../data/confusables';
 import { ALL_KANA, type KanaEntry } from '../data/kana';
 import { ALL_KANJI, type KanjiEntry } from '../data/kanji';
 import { checkMeaning, checkReading, kanaToRomaji } from './romaji';
@@ -5,10 +6,24 @@ import { shuffle, type Card, type Flow, type InputMode, type Order } from './ses
 
 const CHOICE_COUNT = 4;
 
-/** Correct answer plus up to three distinct distractors, shuffled. */
-function pickChoices(correct: string, pool: string[]): string[] {
-  const others = shuffle([...new Set(pool)].filter((p) => p !== correct));
-  return shuffle([correct, ...others.slice(0, CHOICE_COUNT - 1)]);
+/**
+ * Correct answer plus up to three distinct distractors, shuffled.
+ *
+ * When `lookalikes` is supplied, characters that are genuinely easy to confuse
+ * with the answer are drawn first: picking シ out of シ ツ ソ ン tests the
+ * distinction that actually trips people up, where four random kana do not.
+ * Any remaining slots are filled at random from the pool.
+ */
+function pickChoices(
+  correct: string,
+  pool: string[],
+  lookalikes?: Map<string, string[]>,
+): string[] {
+  const others = [...new Set(pool)].filter((p) => p !== correct);
+  const near = lookalikes?.get(correct) ?? [];
+  const confusable = shuffle(others.filter((o) => near.includes(o)));
+  const rest = shuffle(others.filter((o) => !near.includes(o)));
+  return shuffle([correct, ...[...confusable, ...rest].slice(0, CHOICE_COUNT - 1)]);
 }
 
 const exact = (answer: string) => (given: string) => given.trim() === answer;
@@ -60,6 +75,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
           promptScript: 'jp',
           inputMode: 'type',
           placeholder: 'romaji',
+          speech: entry.hira,
           answer: entry.romaji,
           answerScript: 'latin',
           details: entry.alt.length
@@ -77,7 +93,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
           prompt: entry.romaji,
           promptScript: 'latin',
           inputMode: 'choice',
-          choices: pickChoices(shown, glyphPool),
+          choices: pickChoices(shown, glyphPool, KANA_LOOKALIKES),
           answer: shown,
           answerScript: 'jp',
           details,
@@ -92,7 +108,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
 
 // --------------------------------------------------------------- kanji
 
-export type KanjiMode = 'meaning' | 'reading' | 'recall' | 'vocab';
+export type KanjiMode = 'meaning' | 'reading' | 'recall' | 'vocab' | 'listening';
 
 export interface KanjiConfig {
   groupIds: string[];
@@ -109,6 +125,7 @@ export const KANJI_MODE_LABEL: Record<KanjiMode, string> = {
   reading: 'Kanji → reading',
   recall: 'Meaning → kanji',
   vocab: 'Vocabulary word',
+  listening: 'Listening',
 };
 
 export const KANJI_MODE_BLURB: Record<KanjiMode, string> = {
@@ -116,6 +133,7 @@ export const KANJI_MODE_BLURB: Record<KanjiMode, string> = {
   reading: 'See 日, answer any on or kun reading.',
   recall: 'See “day / sun”, produce 日.',
   vocab: 'See 日本, answer the reading にほん.',
+  listening: 'Hear にほん, write down what you heard.',
 };
 
 export function kanjiPool(config: KanjiConfig): KanjiEntry[] {
@@ -144,6 +162,8 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
   const meaningPool = pool.map((k) => k.meanings[0]);
   const charPool = pool.map((k) => k.char);
   const readingPool = pool.map(headReading).filter(Boolean);
+  const vocabReadingPool = pool.flatMap((k) => k.vocab.map((w) => w.reading));
+  const vocabWordPool = pool.flatMap((k) => k.vocab.map((w) => w.word));
 
   for (const k of pool) {
     const allReadings = [...k.on, ...k.kun];
@@ -158,6 +178,7 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
         promptScript: 'jp',
         inputMode: config.inputModes.meaning,
         placeholder: 'meaning in English',
+        speech: k.vocab[0]?.reading,
         choices: choice ? pickChoices(k.meanings[0], meaningPool) : undefined,
         answer: k.meanings.join(' / '),
         answerScript: 'latin',
@@ -180,6 +201,7 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
         promptNote: k.meanings[0],
         inputMode: config.inputModes.reading,
         placeholder: 'romaji or kana',
+        speech: headReading(k),
         choices: choice ? pickChoices(head, readingPool) : undefined,
         answer: allReadings.join('、'),
         answerScript: 'jp',
@@ -198,7 +220,8 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
         promptScript: 'latin',
         inputMode: config.inputModes.recall,
         placeholder: 'the kanji',
-        choices: choice ? pickChoices(k.char, charPool) : undefined,
+        speech: k.vocab[0]?.reading,
+        choices: choice ? pickChoices(k.char, charPool, KANJI_LOOKALIKES) : undefined,
         answer: k.char,
         answerScript: 'jp',
         details: readingDetails(k),
@@ -209,7 +232,6 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
     if (config.modes.includes('vocab')) {
       const choice = config.inputModes.vocab === 'choice';
       for (const word of k.vocab) {
-        const vocabReadingPool = pool.flatMap((other) => other.vocab.map((w) => w.reading));
         cards.push({
           id: `kanji-vocab-${k.char}-${word.word}`,
           itemId: `vocab:${word.word}`,
@@ -218,11 +240,34 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
           promptScript: 'jp',
           inputMode: config.inputModes.vocab,
           placeholder: 'romaji or kana',
+          speech: word.reading,
           choices: choice ? pickChoices(word.reading, vocabReadingPool) : undefined,
           answer: `${word.reading} (${kanaToRomaji(word.reading)})`,
           answerScript: 'jp',
           details: [`${word.word} — ${word.meaning}`, ...readingDetails(k)],
           check: choice ? exact(word.reading) : (given) => checkReading(given, [word.reading]),
+        });
+      }
+    }
+
+    if (config.modes.includes('listening')) {
+      const choice = config.inputModes.listening === 'choice';
+      for (const word of k.vocab) {
+        cards.push({
+          id: `kanji-listening-${k.char}-${word.word}`,
+          itemId: `vocab:${word.word}`,
+          question: choice ? 'Which word did you hear?' : 'Write down what you hear',
+          // The audio is the question, so there is nothing to show.
+          prompt: '',
+          promptScript: 'audio',
+          speech: word.reading,
+          inputMode: config.inputModes.listening,
+          placeholder: 'romaji or kana',
+          choices: choice ? pickChoices(word.word, vocabWordPool) : undefined,
+          answer: `${word.word}　${word.reading}`,
+          answerScript: 'jp',
+          details: [`${word.word} (${word.reading}) — ${word.meaning}`],
+          check: choice ? exact(word.word) : (given) => checkReading(given, [word.reading]),
         });
       }
     }

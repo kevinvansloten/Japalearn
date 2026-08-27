@@ -438,6 +438,54 @@ input {
   letter-spacing: -0.01em;
 }
 
+.listen {
+  width: 116px;
+  height: 116px;
+  margin: 14px auto 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--accent);
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.listen:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.03);
+}
+
+.listen:active {
+  transform: scale(0.98);
+}
+
+.speak-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  flex: none;
+}
+
+.speak-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.mode-card[data-disabled='true'] {
+  opacity: 0.5;
+}
+
+.mode-card[data-disabled='true'] .mode-hit {
+  cursor: not-allowed;
+}
+
 .prompt-note {
   color: var(--text-faint);
   font-size: 14px;

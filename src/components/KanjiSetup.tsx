@@ -9,10 +9,11 @@ import {
   type KanjiMode,
 } from '../lib/buildCards';
 import type { Card, InputMode } from '../lib/session';
+import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
 import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
 
-const MODES: KanjiMode[] = ['meaning', 'reading', 'recall', 'vocab'];
+const MODES: KanjiMode[] = ['meaning', 'reading', 'recall', 'vocab', 'listening'];
 
 function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -36,9 +37,16 @@ interface Props {
 export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
   const patch = (update: Partial<KanjiConfig>) => onChange({ ...config, ...update });
   const stats = useMemo(() => loadItemStats(), []);
+  const hasVoice = useJapaneseVoice();
 
-  const selectedKanji = kanjiPool(config).length;
-  const cards = buildKanjiCards(config);
+  // Listening needs a Japanese voice from the OS. Without one those cards would
+  // be silent and unanswerable, so drop them rather than deal out dead cards.
+  const usable: KanjiConfig = hasVoice
+    ? config
+    : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
+
+  const selectedKanji = kanjiPool(usable).length;
+  const cards = buildKanjiCards(usable);
   const ready = cards.length > 0;
 
   const setGroupKanji = (groupId: string, include: boolean) => {
@@ -135,13 +143,18 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
           {MODES.map((mode) => (
             <ModeCard
               key={mode}
-              pressed={config.modes.includes(mode)}
+              pressed={usable.modes.includes(mode)}
+              disabled={mode === 'listening' && !hasVoice}
               onClick={() => {
                 const next = toggle(config.modes, mode);
                 if (next.length) patch({ modes: next });
               }}
               title={KANJI_MODE_LABEL[mode]}
-              blurb={KANJI_MODE_BLURB[mode]}
+              blurb={
+                mode === 'listening' && !hasVoice
+                  ? 'Needs a Japanese voice installed on this device.'
+                  : KANJI_MODE_BLURB[mode]
+              }
               aside={
                 <Segmented<InputMode>
                   value={config.inputModes[mode]}
@@ -157,7 +170,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
             />
           ))}
         </div>
-        {config.modes.includes('recall') && config.inputModes.recall === 'type' && (
+        {usable.modes.includes('recall') && config.inputModes.recall === 'type' && (
           <p className="faint" style={{ marginTop: 10 }}>
             Meaning → kanji with typing needs a Japanese IME installed. Multiple choice works
             everywhere.

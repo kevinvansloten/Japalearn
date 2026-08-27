@@ -72,6 +72,7 @@ choice**:
 | Kanji → reading | 日 | ニチ, ジツ, ひ or か |
 | Meaning → kanji | "day / sun" | 日 |
 | Vocabulary | 日本 | にほん |
+| Listening | 🔊 にほん | 日本 — にほん |
 
 ## How a session runs
 
@@ -90,6 +91,33 @@ example words. Typing `Enter` checks and continues; in multiple choice, keys
 
 The results screen shows accuracy, best streak and everything you missed, with a
 one-click **practise the ones you missed** to drill just those.
+
+## Look-alike options
+
+Multiple choice is only as good as its wrong answers. Picking か out of か, ぬ,
+ほ, り proves nothing; picking シ out of シ, ツ, ソ, ン is the distinction that
+actually costs you marks. So when the options are characters, the app fills the
+distractor slots with genuine look-alikes first and only falls back to random
+ones when none are in your current selection.
+
+It knows the usual traps in both scripts — シ/ツ/ソ/ン, ク/タ/ワ/ケ, ノ/メ/ヌ/ス,
+ね/れ/わ, は/ほ/ま, さ/き/ち — and the kanji ones too: 木/本/休/体, 日/白/目/百,
+人/入/八, 語/話/読/言, 聞/間, 母/毎.
+
+## Audio
+
+If your device has a Japanese voice installed, readings and vocabulary can be
+played aloud: a speaker button appears next to the answer whenever a card is
+revealed, and there is a **Listening** mode where the audio *is* the question —
+you hear にほん and write down what you heard.
+
+This uses the browser's built-in speech synthesis, so there is no network call
+and nothing to install in the project. It does need a Japanese voice from the
+operating system. On Windows that is **Settings → Time & language → Language &
+region → Add a language → 日本語**, making sure *Speech* is included in the
+optional features; then restart the browser. Without one, the Listening mode is
+shown disabled and the speaker buttons stay hidden — everything else works
+exactly as before.
 
 ## Answer checking
 
@@ -121,11 +149,12 @@ picker. There is a reset button on the home screen.
 ## Project layout
 
 ```
-src/data/         kana and kanji datasets
+src/data/         kana and kanji datasets, plus the look-alike sets
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
 src/lib/storage   localStorage persistence
+src/lib/speech    Japanese text-to-speech, and whether a voice exists
 src/components/   home, the two setup screens, quiz, results
 tests/            romaji and session-engine tests
 scripts/          regenerates the README screenshots
@@ -144,9 +173,11 @@ multiple-choice question has exactly one correct option.
 ## Ideas for later
 
 - Spaced repetition, scheduling reviews by item rather than by session
+- A full N5 vocabulary deck, including the kana-only words
+- Counters, dates and times, with their sound changes
+- Particle and conjugation drills
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond
-- Audio for readings
 
 ## License
 

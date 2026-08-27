@@ -1,6 +1,7 @@
 import { buildKanaCards, buildKanjiCards, type KanjiConfig } from '../src/lib/buildCards';
-import { KANA_GROUPS } from '../src/data/kana';
-import { KANJI_GROUPS } from '../src/data/kanji';
+import { ALL_KANA, KANA_GROUPS } from '../src/data/kana';
+import { KANA_LOOKALIKE_SETS, KANJI_LOOKALIKE_SETS } from '../src/data/confusables';
+import { ALL_KANJI, KANJI_GROUPS } from '../src/data/kanji';
 import { createSession, sessionReducer, type Card, type SessionState } from '../src/lib/session';
 import { ok } from './assert';
 
@@ -14,7 +15,13 @@ const answer = (s: SessionState, given: string) =>
 function correctAnswerFor(card: Card): string {
   if (card.choices) return card.choices.find((c) => card.check(c))!;
   const bare = card.answer.replace(/\s*[(（].*$/, '');
-  const candidates = [card.answer, bare, bare.split(' / ')[0], bare.split('、')[0]];
+  const candidates = [
+    card.answer,
+    bare,
+    ...bare.split(/\s+/).filter(Boolean),
+    bare.split(' / ')[0],
+    bare.split('、')[0],
+  ];
   const found = candidates.find((c) => card.check(c));
   if (found !== undefined) return found;
   throw new Error(`no accepted answer for ${card.id} (answer="${card.answer}")`);
@@ -49,8 +56,8 @@ ok('kana card count', everyKana.length === 104 * 2 * 2, `${everyKana.length}`);
 const fullKanji: KanjiConfig = {
   groupIds: allKanjiGroups,
   excluded: [],
-  modes: ['meaning', 'reading', 'recall', 'vocab'],
-  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', vocab: 'type' },
+  modes: ['meaning', 'reading', 'recall', 'vocab', 'listening'],
+  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', vocab: 'type', listening: 'type' },
   flow: 'once',
   order: 'ordered',
 };
@@ -72,7 +79,7 @@ ok('every card has an acceptable answer', unanswerable.length === 0, unanswerabl
 // Ambiguous distractors would make a question unanswerable in multiple choice.
 const choiceCards = buildKanjiCards({
   ...fullKanji,
-  inputModes: { meaning: 'choice', reading: 'choice', recall: 'choice', vocab: 'choice' },
+  inputModes: { meaning: 'choice', reading: 'choice', recall: 'choice', vocab: 'choice', listening: 'choice' },
 }).filter((c) => c.choices);
 const badChoice = choiceCards.filter((c) => c.choices!.filter((o) => c.check(o)).length !== 1);
 ok('exactly one correct option per choice card', badChoice.length === 0,
@@ -126,7 +133,7 @@ const vocab = buildKanjiCards({
   groupIds: ['numbers'],
   excluded: numbers.kanji.map((k) => k.char).filter((c) => c !== '一'),
   modes: ['vocab'],
-  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', vocab: 'type' },
+  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', vocab: 'type', listening: 'type' },
   flow: 'once',
   order: 'ordered',
 });
@@ -153,3 +160,72 @@ const trimmed = buildKanjiCards({ ...fullKanji, modes: ['meaning'], excluded: ['
 const untrimmed = buildKanjiCards({ ...fullKanji, modes: ['meaning'], excluded: [] });
 ok('exclusions apply', untrimmed.length - trimmed.length === 2,
   `${untrimmed.length} vs ${trimmed.length}`);
+
+// ----------------------------------------------------- look-alike choices
+
+// A set that names a character the deck does not contain can never be drawn,
+// so the entry would be silently dead.
+const kanaGlyphs = new Set(ALL_KANA.flatMap((k) => [k.hira, k.kata]));
+const strayKana = KANA_LOOKALIKE_SETS.flat().filter((c) => !kanaGlyphs.has(c));
+ok('kana look-alike sets only name real kana', strayKana.length === 0, strayKana.join(' '));
+
+const kanjiChars = new Set(ALL_KANJI.map((k) => k.char));
+const strayKanji = KANJI_LOOKALIKE_SETS.flat().filter((c) => !kanjiChars.has(c));
+ok('kanji look-alike sets only name deck kanji', strayKanji.length === 0, strayKanji.join(' '));
+
+// シ ツ ソ ン is the canonical katakana trap. With all four in the pool, the
+// three distractor slots should be exactly the three look-alikes every time.
+const katakanaRecall = buildKanaCards({
+  scripts: ['kata'], groupIds: ['s', 't', 'w'], modes: ['recall'], flow: 'once', order: 'ordered',
+});
+const shiCard = katakanaRecall.find((c) => c.answer === 'シ')!;
+ok('シ card exists', Boolean(shiCard));
+ok('シ is drilled against ツ ソ ン',
+  ['ツ', 'ソ', 'ン'].every((c) => shiCard.choices!.includes(c)),
+  shiCard.choices!.join(' '));
+
+// 木 本 休 体 all share a shape and all live in different groups.
+const treeRecall = buildKanjiCards({
+  ...fullKanji,
+  groupIds: ['time', 'places', 'verbs', 'body'],
+  modes: ['recall'],
+  inputModes: { ...fullKanji.inputModes, recall: 'choice' },
+});
+const treeCard = treeRecall.find((c) => c.answer === '木')!;
+ok('木 is drilled against 本 休 体',
+  ['本', '休', '体'].every((c) => treeCard.choices!.includes(c)),
+  treeCard.choices!.join(' '));
+
+// Falling back to random distractors when nothing look-alike is in the pool.
+const loneRecall = buildKanaCards({
+  scripts: ['hira'], groupIds: ['k'], modes: ['recall'], flow: 'once', order: 'ordered',
+});
+ok('still fills four options without look-alikes in the pool',
+  loneRecall.every((c) => c.choices!.length === 4),
+  loneRecall.map((c) => c.choices!.length).join(','));
+
+// --------------------------------------------------------------- audio
+
+const listening = buildKanjiCards({
+  ...fullKanji,
+  groupIds: ['numbers'],
+  excluded: numbers.kanji.map((k) => k.char).filter((c) => c !== '一'),
+  modes: ['listening'],
+});
+ok('listening: one card per example word', listening.length === 2, `${listening.length}`);
+ok('listening: the audio is the prompt', listening.every((c) => c.promptScript === 'audio'));
+ok('listening: nothing is shown', listening.every((c) => c.prompt === ''));
+ok('listening: speaks the reading', listening[0].speech === 'ひとつ', listening[0].speech);
+ok('listening: accepts romaji', listening[0].check('hitotsu'));
+ok('listening: rejects nonsense', !listening[0].check('nihon'));
+
+// An audio prompt with nothing to say would be a blank, unanswerable card.
+const mute = everyKanji.filter((c) => c.promptScript === 'audio' && !c.speech);
+ok('no silent audio prompts', mute.length === 0, mute.map((c) => c.id).join('; '));
+
+// Anything spoken must be kana, so the voice cannot pick the wrong reading of
+// a bare kanji.
+const spoken = everyKanji.concat(everyKana).filter((c) => c.speech);
+const nonKana = spoken.filter((c) => !/^[぀-ヿー]+$/.test(c.speech!));
+ok('spoken text is always kana', nonKana.length === 0,
+  nonKana.slice(0, 5).map((c) => `${c.id}="${c.speech}"`).join('; '));

@@ -20,7 +20,7 @@ const DEFAULT_KANJI: KanjiConfig = {
   groupIds: ['numbers'],
   excluded: [],
   modes: ['meaning'],
-  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', vocab: 'type' },
+  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', vocab: 'type', listening: 'type' },
   flow: 'mistakes',
   order: 'shuffled',
 };

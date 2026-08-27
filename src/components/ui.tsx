@@ -1,6 +1,27 @@
 import type { ReactNode } from 'react';
 import type { Flow, Order } from '../lib/session';
 
+export function SpeakerIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+      <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+    </svg>
+  );
+}
+
 export function Panel({
   title,
   hint,
@@ -75,21 +96,24 @@ export function ModeCard({
   title,
   blurb,
   aside,
+  disabled,
 }: {
   pressed: boolean;
   onClick: () => void;
   title: string;
   blurb: string;
   aside?: ReactNode;
+  disabled?: boolean;
 }) {
   return (
-    <div className="mode-card" data-on={pressed}>
+    <div className="mode-card" data-on={pressed} data-disabled={disabled}>
       <button
         type="button"
         className="mode-hit"
         onClick={onClick}
         aria-pressed={pressed}
         aria-label={title}
+        disabled={disabled}
       >
         <span className="box" aria-hidden="true">
           ✓

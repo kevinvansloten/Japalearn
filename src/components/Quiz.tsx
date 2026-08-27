@@ -11,7 +11,9 @@ import {
 } from '../lib/session';
 import { recordSession } from '../lib/storage';
 import { romajiToKana } from '../lib/romaji';
+import { speak, stopSpeaking, useJapaneseVoice } from '../lib/speech';
 import { Results } from './Results';
+import { SpeakerIcon } from './ui';
 
 const AUTO_ADVANCE_MS = 700;
 
@@ -29,6 +31,7 @@ export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
   const [draft, setDraft] = useState('');
   const [autoAdvance, setAutoAdvance] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasVoice = useJapaneseVoice();
 
   const dispatch = (action: SessionAction) => setState((s) => sessionReducer(s, action));
 
@@ -43,6 +46,16 @@ export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
   useEffect(() => {
     if (state.phase === 'question' && card?.inputMode === 'type') inputRef.current?.focus();
   }, [state.currentId, state.phase, card?.inputMode]);
+
+  // A listening card's prompt is the audio, so play it as the card arrives.
+  useEffect(() => {
+    if (state.phase === 'question' && card?.promptScript === 'audio' && card.speech) {
+      speak(card.speech);
+    }
+  }, [state.currentId, state.phase, card?.promptScript, card?.speech]);
+
+  // Never let a clip run on past the card that started it.
+  useEffect(() => stopSpeaking, []);
 
   // Correct answers move on by themselves; misses wait so you can read them.
   useEffect(() => {
@@ -163,7 +176,18 @@ export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
 
       <div className={cardClass}>
         <div className="question">{card.question}</div>
-        <div className={card.promptScript === 'jp' ? 'glyph' : 'glyph latin'}>{card.prompt}</div>
+        {card.promptScript === 'audio' ? (
+          <button
+            type="button"
+            className="listen"
+            onClick={() => card.speech && speak(card.speech)}
+            aria-label="Play it again"
+          >
+            <SpeakerIcon size={40} />
+          </button>
+        ) : (
+          <div className={card.promptScript === 'jp' ? 'glyph' : 'glyph latin'}>{card.prompt}</div>
+        )}
         {card.promptNote && <div className="prompt-note">{card.promptNote}</div>}
 
         {card.inputMode === 'type' ? (
@@ -246,7 +270,22 @@ export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
           <div className="verdict">
             {feedback.correct ? 'Correct' : feedback.given ? `Not quite — you wrote “${feedback.given}”` : 'Answer'}
           </div>
-          <div className={card.answerScript === 'jp' ? 'answer jp-text' : 'answer'}>{card.answer}</div>
+          <div className="row" style={{ gap: 8 }}>
+            <span className={card.answerScript === 'jp' ? 'answer jp-text' : 'answer'}>
+              {card.answer}
+            </span>
+            {hasVoice && card.speech && (
+              <button
+                type="button"
+                className="speak-btn"
+                onClick={() => speak(card.speech!)}
+                aria-label={`Hear ${card.speech}`}
+                title="Hear it"
+              >
+                <SpeakerIcon size={16} />
+              </button>
+            )}
+          </div>
           {card.details?.map((line) => (
             <div className="detail" key={line}>
               {line}
