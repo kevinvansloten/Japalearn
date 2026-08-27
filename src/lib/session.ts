@@ -6,9 +6,9 @@ export interface Card {
   itemId: string;
   /** short label telling the learner what to answer */
   question: string;
-  /** the big thing on screen */
+  /** the big thing on screen; empty when the prompt is the audio itself */
   prompt: string;
-  promptScript: 'jp' | 'latin';
+  promptScript: 'jp' | 'latin' | 'audio';
   /** small line under the prompt, e.g. a hint about which reading */
   promptNote?: string;
   inputMode: InputMode;
@@ -16,6 +16,8 @@ export interface Card {
   choices?: string[];
   /** placeholder for the typed answer field */
   placeholder?: string;
+  /** Japanese text to read aloud: the audio prompt, and the replay on reveal */
+  speech?: string;
   /** canonical answer shown on reveal */
   answer: string;
   /** script of the answer, so the input, choices and reveal pick the right font */
