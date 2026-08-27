@@ -1,8 +1,9 @@
 # 日本 JapanLearner
 
 A practice app for learning Japanese: drill the kana until they are automatic,
-then work through the JLPT N5 kanji in groups. You choose exactly what to study
-and how you want to be asked.
+then work through the JLPT N5 kanji in groups. It schedules your reviews, so
+the daily question is "what's due?" rather than "what should I study?" — but
+you can still pick exactly what to drill and how to be asked.
 
 Built with React, TypeScript and Vite. Everything runs in the browser — no
 account, no backend, no network calls. Progress is kept in `localStorage`.
@@ -74,6 +75,37 @@ choice**:
 | Vocabulary | 日本 | にほん |
 | Listening | 🔊 にほん | 日本 — にほん |
 
+## Reviews
+
+The home screen opens on what is due today. Answer it right and the item moves
+up a box and comes back later; miss it and it drops back to daily.
+
+| Box | Next review |
+| --- | --- |
+| 1 | tomorrow |
+| 2 | in 3 days |
+| 3 | in a week |
+| 4 | in 2 weeks |
+| 5 | in a month |
+
+An item counts as known only if you answered it without a slip, so one miss
+keeps it in the daily box.
+
+Two rules keep this from becoming a chore. **Due items always come back**, even
+if you have since unticked the group they live in — once you have started
+learning 日 it should not quietly disappear. **New items only come from your
+current selection**, at most 15 a day, so a fresh install is a manageable
+handful rather than 300 cards.
+
+Scheduling is per item, not per item-and-mode. Knowing 日 → "day" is admittedly
+not the same as knowing 日 → ニチ, but scheduling those separately triples the
+daily load, which is the surest way to stop reviewing at all. The review deck
+picks a random enabled mode each time an item comes round, so both get
+exercised over the weeks.
+
+Practising a deck yourself never touches the schedule — drilling something ten
+times in an afternoon should not push its next review out a month.
+
 ## How a session runs
 
 Pick the shape of the session independently of what is in it:
@@ -140,9 +172,9 @@ articles and a leading "to", so `go` and `to go` both count.
 
 ## Progress
 
-Lifetime accuracy per item is stored in `localStorage`. It powers the *giving you
-the most trouble* list on the home screen and the mastery dots in the kanji
-picker. There is a reset button on the home screen.
+Everything is stored in `localStorage`: lifetime accuracy per item, which drives
+the *giving you the most trouble* list and the mastery dots in the kanji picker,
+plus each item's box and due date. There is a reset button on the home screen.
 
 ![The home screen showing both decks with lifetime accuracy and a list of the weakest kanji](docs/screenshots/home.png)
 
@@ -153,10 +185,12 @@ src/data/         kana and kanji datasets, plus the look-alike sets
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
+src/lib/schedule  Leitner boxes: when an item comes back
+src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
 src/components/   home, the two setup screens, quiz, results
-tests/            romaji and session-engine tests
+tests/            romaji, session-engine, scheduling and storage tests
 scripts/          regenerates the README screenshots
 ```
 
@@ -172,7 +206,6 @@ multiple-choice question has exactly one correct option.
 
 ## Ideas for later
 
-- Spaced repetition, scheduling reviews by item rather than by session
 - A full N5 vocabulary deck, including the kana-only words
 - Counters, dates and times, with their sound changes
 - Particle and conjugation drills

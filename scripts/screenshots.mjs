@@ -118,14 +118,25 @@ await evaluate(`(() => {
   const seed = { '日': [9,1], '月': [8,2], '火': [6,3], '水': [7,1], '木': [4,4],
                  '金': [5,2], '土': [3,5], '曜': [2,6], '年': [6,1], '時': [7,2],
                  '分': [3,4], '半': [5,1], '今': [8,1], '間': [2,5], '毎': [4,2], '週': [3,3] };
+  const DAY = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  let i = 0;
   for (const [char, [right, wrong]] of Object.entries(seed)) {
-    store.items['kanji:' + char] = { right, wrong, lastSeen: Date.now() };
+    // Half are scheduled and already due, the rest are still unseen, so the
+    // review panel shows both counts.
+    const scheduled = i < 8;
+    store.items['kanji:' + char] = {
+      right, wrong, lastSeen: now,
+      ...(scheduled ? { box: 1 + (i % 3), due: now - (1 + i) * DAY } : {}),
+    };
+    i += 1;
   }
+  store.prefs.newIntroduced = { date: new Date().toLocaleDateString('en-CA'), count: 12 };
   store.items['kana:vowels-あ'] = { right: 12, wrong: 1, lastSeen: Date.now() };
   store.items['kana:k-か'] = { right: 9, wrong: 3, lastSeen: Date.now() };
   store.prefs.kanji = {
     groupIds: ['time'], excluded: [], modes: ['reading'],
-    inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type' },
+    inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type', listening: 'type' },
     flow: 'mistakes', order: 'ordered',
   };
   store.prefs.kana = {
@@ -136,7 +147,7 @@ await evaluate(`(() => {
   return 'seeded';
 })()`);
 await goto(BASE);
-await shot('home', 590);
+await shot('home', 800);
 
 // ------------------------------------------------------- 2. kanji quiz
 
