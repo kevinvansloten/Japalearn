@@ -1,0 +1,286 @@
+import { useEffect, useRef, useState } from 'react';
+import {
+  accuracy,
+  createSession,
+  remaining,
+  sessionReducer,
+  type Card,
+  type SessionAction,
+  type SessionOptions,
+  type SessionState,
+} from '../lib/session';
+import { recordSession } from '../lib/storage';
+import { romajiToKana } from '../lib/romaji';
+import { Results } from './Results';
+
+const AUTO_ADVANCE_MS = 700;
+
+interface Props {
+  title: string;
+  cards: Card[];
+  options: SessionOptions;
+  /** back to the setup screen for this deck */
+  onEdit: () => void;
+  onHome: () => void;
+}
+
+export function Quiz({ title, cards, options, onEdit, onHome }: Props) {
+  const [state, setState] = useState<SessionState>(() => createSession(cards, options));
+  const [draft, setDraft] = useState('');
+  const [autoAdvance, setAutoAdvance] = useState(true);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const dispatch = (action: SessionAction) => setState((s) => sessionReducer(s, action));
+
+  const restart = (deck: Card[], nextOptions: SessionOptions = options) => {
+    setDraft('');
+    setState(createSession(deck, nextOptions));
+  };
+
+  const card = state.currentId ? state.byId[state.currentId] : null;
+
+  // Focus the input for every new typed card.
+  useEffect(() => {
+    if (state.phase === 'question' && card?.inputMode === 'type') inputRef.current?.focus();
+  }, [state.currentId, state.phase, card?.inputMode]);
+
+  // Correct answers move on by themselves; misses wait so you can read them.
+  useEffect(() => {
+    if (state.phase !== 'feedback' || !autoAdvance || !state.last?.correct) return;
+    const timer = window.setTimeout(() => {
+      setDraft('');
+      dispatch({ type: 'next' });
+    }, AUTO_ADVANCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [state.phase, state.last, autoAdvance]);
+
+  // Fold the session into lifetime stats once it is over.
+  useEffect(() => {
+    if (state.phase !== 'done') return;
+    const byItem: Record<string, { right: number; wrong: number }> = {};
+    for (const [cardId, result] of Object.entries(state.perCard)) {
+      const itemId = state.byId[cardId]?.itemId;
+      if (!itemId) continue;
+      const prior = byItem[itemId] ?? { right: 0, wrong: 0 };
+      byItem[itemId] = { right: prior.right + result.right, wrong: prior.wrong + result.wrong };
+    }
+    recordSession(byItem);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase]);
+
+  // Enter continues from feedback; 1-4 pick a multiple-choice option.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (state.phase === 'feedback' && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        setDraft('');
+        dispatch({ type: 'next' });
+        return;
+      }
+      if (state.phase === 'question' && card?.inputMode === 'choice') {
+        const index = Number(event.key) - 1;
+        if (card.choices && index >= 0 && index < card.choices.length) {
+          event.preventDefault();
+          dispatch({ type: 'answer', given: card.choices[index] });
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [state.phase, card]);
+
+  if (state.phase === 'done') {
+    return (
+      <Results
+        title={title}
+        state={state}
+        onRestart={() => restart(cards)}
+        onPractiseMissed={() => restart(state.missed.map((id) => state.byId[id]), {
+          ...options,
+          flow: 'mistakes',
+        })}
+        onEdit={onEdit}
+        onHome={onHome}
+      />
+    );
+  }
+
+  if (!card) return null;
+
+  const left = remaining(state);
+  const done = state.answered;
+  const progress = left === null ? 0 : (done / Math.max(done + left, 1)) * 100;
+  const feedback = state.phase === 'feedback' ? state.last : null;
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!draft.trim()) return;
+    dispatch({ type: 'answer', given: draft });
+  };
+
+  const cardClass = feedback ? (feedback.correct ? 'card correct' : 'card wrong') : 'card';
+  const kanaEcho =
+    card.inputMode === 'type' && card.answerScript === 'jp' && draft.trim()
+      ? romajiToKana(draft)
+      : '';
+
+  return (
+    <div className="quiz">
+      <div className="row between">
+        <div>
+          <strong>{title}</strong>
+          <div className="faint">
+            {left === null ? 'Endless — stop whenever you like' : `${left} card${left === 1 ? '' : 's'} to go`}
+          </div>
+        </div>
+        <div className="row">
+          <button type="button" className="btn ghost" onClick={onEdit}>
+            Settings
+          </button>
+          <button type="button" className="btn" onClick={() => dispatch({ type: 'finish' })}>
+            Finish
+          </button>
+        </div>
+      </div>
+
+      {left !== null && (
+        <div className="progress">
+          <div style={{ width: `${progress}%` }} />
+        </div>
+      )}
+
+      <div className="scoreline">
+        <span>
+          <b>{state.correct}</b> / {state.answered} correct
+        </span>
+        <span>
+          <b>{accuracy(state)}%</b> accuracy
+        </span>
+        <span>
+          streak <b>{state.streak}</b>
+        </span>
+      </div>
+
+      <div className={cardClass}>
+        <div className="question">{card.question}</div>
+        <div className={card.promptScript === 'jp' ? 'glyph' : 'glyph latin'}>{card.prompt}</div>
+        {card.promptNote && <div className="prompt-note">{card.promptNote}</div>}
+
+        {card.inputMode === 'type' ? (
+          <form onSubmit={submit} style={{ marginTop: 18 }}>
+            <input
+              ref={inputRef}
+              className={card.answerScript === 'jp' ? 'answer-input jp' : 'answer-input'}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Submit explicitly rather than relying on implicit form submission,
+                // and stop the event here: effects flush mid-dispatch, so the window
+                // listener below would otherwise see the new feedback phase and skip
+                // straight past the answer on the very keypress that produced it.
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  submit(e);
+                }
+              }}
+              disabled={state.phase === 'feedback'}
+              placeholder={card.placeholder}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label={card.question}
+            />
+            {kanaEcho && state.phase === 'question' && (
+              <div className="faint" style={{ marginTop: 6, fontFamily: 'var(--jp)' }}>
+                {kanaEcho}
+              </div>
+            )}
+            {state.phase === 'question' && (
+              <div className="row" style={{ justifyContent: 'center', marginTop: 14 }}>
+                <button type="submit" className="btn primary" disabled={!draft.trim()}>
+                  Check
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => dispatch({ type: 'reveal' })}
+                >
+                  I don’t know
+                </button>
+              </div>
+            )}
+          </form>
+        ) : (
+          <div className="choice-grid" style={{ marginTop: 18 }}>
+            {card.choices?.map((choice) => {
+              const isAnswer = card.check(choice);
+              const picked = feedback && state.last?.given === choice;
+              const className = [
+                'choice',
+                card.answerScript === 'jp' ? 'jp' : '',
+                feedback && isAnswer ? 'is-answer' : '',
+                feedback && picked && !isAnswer ? 'is-wrong' : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
+              return (
+                <button
+                  key={choice}
+                  type="button"
+                  className={className}
+                  disabled={state.phase === 'feedback'}
+                  onClick={() => dispatch({ type: 'answer', given: choice })}
+                >
+                  {choice}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {feedback && (
+        <div className={feedback.correct ? 'feedback correct' : 'feedback wrong'}>
+          <div className="verdict">
+            {feedback.correct ? 'Correct' : feedback.given ? `Not quite — you wrote “${feedback.given}”` : 'Answer'}
+          </div>
+          <div className={card.answerScript === 'jp' ? 'answer jp-text' : 'answer'}>{card.answer}</div>
+          {card.details?.map((line) => (
+            <div className="detail" key={line}>
+              {line}
+            </div>
+          ))}
+          <div className="row" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => {
+                setDraft('');
+                dispatch({ type: 'next' });
+              }}
+            >
+              Next
+            </button>
+            <span className="faint">
+              or press <span className="kbd">Enter</span>
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="row between">
+        <label className="row faint" style={{ gap: 6, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={autoAdvance}
+            onChange={(e) => setAutoAdvance(e.target.checked)}
+          />
+          Move on automatically when correct
+        </label>
+        {card.inputMode === 'choice' && <span className="faint">Tip: keys 1–4 pick an answer</span>}
+      </div>
+    </div>
+  );
+}
