@@ -137,3 +137,26 @@ ok('a partly malformed file still imports', dirty.ok);
 eq('keeping only the valid entries', dirty.items, 1);
 eq('the good entry survives', loadItemStats()['kanji:川'].box, 2);
 ok('the bad entry is gone', loadItemStats()['bad'] === undefined);
+
+// ------------------------------------------------- legacy kana migration
+
+// Progress saved before kana were split by script must not simply vanish.
+reset();
+backing.set('japanlearner.v1', JSON.stringify({
+  items: { 'kana:vowels-あ': { right: 7, wrong: 1, lastSeen: NOW, box: 3, due: NOW + DAY } },
+  prefs: {},
+}));
+const migrated = loadItemStats();
+eq('the old key is gone', migrated['kana:vowels-あ'], undefined);
+eq('and is read as hiragana', migrated['kana:hira:vowels-あ'].box, 3);
+eq('with its counts intact', migrated['kana:hira:vowels-あ'].right, 7);
+ok('and it is not also claimed as katakana',
+  migrated['kana:kata:vowels-あ'] === undefined);
+
+// Already-migrated ids must pass through untouched.
+reset();
+backing.set('japanlearner.v1', JSON.stringify({
+  items: { 'kana:kata:vowels-あ': { right: 2, wrong: 0, lastSeen: NOW, box: 2 } },
+  prefs: {},
+}));
+eq('a katakana id survives as itself', loadItemStats()['kana:kata:vowels-あ'].box, 2);
