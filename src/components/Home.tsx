@@ -4,6 +4,7 @@ import { ALL_COUNTERS } from '../data/counters';
 import { ALL_KANJI } from '../data/kanji';
 import { ALL_WORDS } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
+import { ALL_PARTICLE_SENTENCES } from '../data/particles';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
 import {
@@ -22,6 +23,7 @@ interface Props {
   onCounters: () => void;
   onWords: () => void;
   onConjugation: () => void;
+  onParticles: () => void;
   onReset: () => void;
 }
 
@@ -39,6 +41,7 @@ export function Home({
   onCounters,
   onWords,
   onConjugation,
+  onParticles,
   onReset,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -69,10 +72,11 @@ export function Home({
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
   const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
   const words = summarise(ALL_WORDS.map((w) => `vocab:${w.word}`));
+  const particles = summarise(ALL_PARTICLE_SENTENCES.map((s) => `particle:${s.text}`));
   const conjugation = summarise(
     [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   );
-  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen > 0;
+  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen + particles.seen > 0;
 
   const weakest = useMemo(() => {
     return ALL_KANJI.map((k) => ({ char: k.char, meaning: k.meanings[0], acc: itemAccuracy(stats[`kanji:${k.char}`]) }))
@@ -84,8 +88,8 @@ export function Home({
   return (
     <div className="stack">
       <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
-        Five decks covering N5: the kana, the kanji, the counters that never behave, the core
-        vocabulary, and how verbs and adjectives conjugate. Review what is due, or pick a deck
+        Six decks covering N5: the kana, the kanji, the counters that never behave, the core
+        vocabulary, how verbs and adjectives conjugate, and which particle a sentence takes. Review what is due, or pick a deck
         and drill exactly what you choose.
       </p>
 
@@ -165,6 +169,15 @@ export function Home({
             {ALL_ADJECTIVES.length} adjectives.
           </p>
           <Progress summary={conjugation} unit="words" />
+        </button>
+
+        <button type="button" className="home-card" onClick={onParticles}>
+          <span className="big">パン＿食べます</span>
+          <h2>Particles</h2>
+          <p>
+            {ALL_PARTICLE_SENTENCES.length} sentences with a gap — は, が, を, に, で and the rest.
+          </p>
+          <Progress summary={particles} unit="sentences" />
         </button>
       </div>
 
