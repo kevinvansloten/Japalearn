@@ -1,11 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ALL_KANA } from '../data/kana';
 import { ALL_COUNTERS } from '../data/counters';
 import { ALL_KANJI } from '../data/kanji';
 import { ALL_WORDS } from '../data/words';
+import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
-import { itemAccuracy, loadItemStats, resetProgress } from '../lib/storage';
+import {
+  exportProgress,
+  importProgress,
+  itemAccuracy,
+  loadItemStats,
+  resetProgress,
+} from '../lib/storage';
 
 interface Props {
   plan: ReviewPlan;
@@ -14,6 +21,7 @@ interface Props {
   onKanji: () => void;
   onCounters: () => void;
   onWords: () => void;
+  onConjugation: () => void;
   onReset: () => void;
 }
 
@@ -23,7 +31,18 @@ interface Summary {
   accuracy: number | null;
 }
 
-export function Home({ plan, onReview, onKana, onKanji, onCounters, onWords, onReset }: Props) {
+export function Home({
+  plan,
+  onReview,
+  onKana,
+  onKanji,
+  onCounters,
+  onWords,
+  onConjugation,
+  onReset,
+}: Props) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [notice, setNotice] = useState('');
   const stats = useMemo(() => loadItemStats(), []);
   const now = Date.now();
   const upcoming = nextDueAt(stats, now);
@@ -50,7 +69,10 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onWords, onR
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
   const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
   const words = summarise(ALL_WORDS.map((w) => `vocab:${w.word}`));
-  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen > 0;
+  const conjugation = summarise(
+    [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
+  );
+  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen > 0;
 
   const weakest = useMemo(() => {
     return ALL_KANJI.map((k) => ({ char: k.char, meaning: k.meanings[0], acc: itemAccuracy(stats[`kanji:${k.char}`]) }))
@@ -62,8 +84,9 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onWords, onR
   return (
     <div className="stack">
       <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
-        Four decks covering N5: the kana, the kanji, the counters that never behave, and the core
-        vocabulary. Review what is due, or pick a deck and drill exactly what you choose.
+        Five decks covering N5: the kana, the kanji, the counters that never behave, the core
+        vocabulary, and how verbs and adjectives conjugate. Review what is due, or pick a deck
+        and drill exactly what you choose.
       </p>
 
       <section className="review-panel" data-ready={plan.cards.length > 0}>
@@ -133,6 +156,16 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onWords, onR
           </p>
           <Progress summary={words} unit="words" />
         </button>
+
+        <button type="button" className="home-card" onClick={onConjugation}>
+          <span className="big">書く 書いて</span>
+          <h2>Conjugation</h2>
+          <p>
+            ます, て-form, ない and past, across {ALL_VERBS.length} verbs and{' '}
+            {ALL_ADJECTIVES.length} adjectives.
+          </p>
+          <Progress summary={conjugation} unit="words" />
+        </button>
       </div>
 
       {weakest.length > 0 && (
@@ -152,22 +185,68 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onWords, onR
         </section>
       )}
 
-      {anyProgress && (
+      <div className="row between">
         <div className="row">
           <button
             type="button"
             className="btn ghost"
             onClick={() => {
-              if (window.confirm('Clear all saved progress? This cannot be undone.')) {
-                resetProgress();
-                onReset();
-              }
+              const blob = new Blob([exportProgress()], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `japanlearner-${new Date().toISOString().slice(0, 10)}.json`;
+              link.click();
+              URL.revokeObjectURL(url);
+              setNotice('Progress downloaded.');
             }}
           >
-            Reset saved progress
+            Export progress
           </button>
+
+          <button type="button" className="btn ghost" onClick={() => fileInput.current?.click()}>
+            Import progress
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file) return;
+              if (
+                !window.confirm(
+                  'Importing replaces all saved progress on this device. Continue?',
+                )
+              ) {
+                return;
+              }
+              const result = importProgress(await file.text());
+              setNotice(result.message);
+              if (result.ok) onReset();
+            }}
+          />
+
+          {anyProgress && (
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                if (window.confirm('Clear all saved progress? This cannot be undone.')) {
+                  resetProgress();
+                  setNotice('Progress cleared.');
+                  onReset();
+                }
+              }}
+            >
+              Reset saved progress
+            </button>
+          )}
         </div>
-      )}
+        {notice && <span className="faint">{notice}</span>}
+      </div>
     </div>
   );
 }

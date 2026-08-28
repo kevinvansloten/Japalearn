@@ -17,8 +17,10 @@ const backing = new Map<string, string>();
   },
 };
 
-const { loadItemStats, newAllowanceToday, recordReview, recordSession, resetProgress, savePref, loadPref } =
-  await import('../src/lib/storage');
+const {
+  exportProgress, importProgress, loadItemStats, newAllowanceToday,
+  recordReview, recordSession, resetProgress, savePref, loadPref,
+} = await import('../src/lib/storage');
 const { NEW_PER_DAY } = await import('../src/lib/schedule');
 const { eq, ok } = await import('./assert');
 
@@ -92,3 +94,46 @@ ok('reset keeps your setup',
 reset();
 backing.set('japanlearner.v1', '{ this is not json');
 eq('corrupt storage reads as empty', Object.keys(loadItemStats()).length, 0);
+
+// -------------------------------------------------------- export/import
+
+// The schedule is weeks of work that cannot be reconstructed, so a round trip
+// has to preserve it exactly.
+reset();
+recordReview({ 'kanji:日': { right: 3, wrong: 1 } }, NOW);
+savePref('kana', { groupIds: ['k'] });
+const backup = exportProgress();
+const before = loadItemStats()['kanji:日'];
+
+reset();
+eq('cleared before restoring', Object.keys(loadItemStats()).length, 0);
+
+const restored = importProgress(backup);
+ok('import reports success', restored.ok, restored.message);
+eq('import restores the item', loadItemStats()['kanji:日'].box, before.box);
+eq('and its due date', loadItemStats()['kanji:日'].due, before.due);
+eq('and its counts', loadItemStats()['kanji:日'].right, before.right);
+ok('and the saved setup',
+  JSON.stringify(loadPref('kana', null)) === JSON.stringify({ groupIds: ['k'] }));
+
+// A bad file must be refused rather than half-applied.
+reset();
+recordReview({ 'kanji:山': { right: 1, wrong: 0 } }, NOW);
+const junk = importProgress('not json at all');
+ok('junk is rejected', !junk.ok);
+eq('and nothing was touched', Object.keys(loadItemStats()).length, 1);
+
+const wrongShape = importProgress('{"hello":"world"}');
+ok('a file of the wrong shape is rejected', !wrongShape.ok);
+eq('and still nothing was touched', Object.keys(loadItemStats()).length, 1);
+
+// Entries that are not real stats must be dropped, so a malformed export
+// cannot put NaN due dates into the scheduler.
+reset();
+const dirty = importProgress(
+  JSON.stringify({ items: { 'kanji:川': { right: 1, wrong: 0, box: 2, due: 5 }, bad: { nope: true } }, prefs: {} }),
+);
+ok('a partly malformed file still imports', dirty.ok);
+eq('keeping only the valid entries', dirty.items, 1);
+eq('the good entry survives', loadItemStats()['kanji:川'].box, 2);
+ok('the bad entry is gone', loadItemStats()['bad'] === undefined);

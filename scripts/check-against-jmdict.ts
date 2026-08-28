@@ -4,6 +4,7 @@
  *   npm run check:data            # the vocabulary deck
  *   npm run check:data counters   # counters, dates and times
  *   npm run check:data kanjivocab # the kanji deck's example words
+ *   npm run check:data verbs      # conjugation classes, against the POS tags
  *
  * This only ever reads. Nothing fetched here is written into the repository,
  * so the CC-BY-SA question that kept JMdict out of the data files does not
@@ -24,6 +25,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { ALL_COUNTERS } from '../src/data/counters';
 import { ALL_KANJI } from '../src/data/kanji';
 import { ALL_WORDS } from '../src/data/words';
+import { ALL_ADJECTIVES, ALL_VERBS } from '../src/data/conjugation';
 
 const CACHE = process.argv[3] ?? `node_modules/.cache/jisho-${process.argv[2] ?? 'words'}.json`;
 const WHICH = process.argv[2] ?? 'words';
@@ -109,6 +111,71 @@ const items: Item[] =
         meanings: w.meanings,
         kind: w.kind,
       }));
+
+/**
+ * The conjugation deck is a special case: what needs checking is not the
+ * reading but the class, and JMdict states it outright in parts_of_speech.
+ * Get this wrong and every form the rules derive from it is wrong too.
+ */
+if (WHICH === 'verbs') {
+  const wrong: string[] = [];
+  const unknown: string[] = [];
+
+  const classify = (pos: string[]): string | null => {
+    const all = pos.join(' | ');
+    // Order matters: 行く is tagged "Godan verb - Iku/Yuku special class",
+    // which is a godan verb with one exception, not an irregular one.
+    if (/Suru verb|Kuru verb/i.test(all)) return 'irregular';
+    if (/Ichidan verb/i.test(all)) return 'ichidan';
+    if (/Godan verb/i.test(all)) return 'godan';
+    if (/I-adjective/i.test(all)) return 'i';
+    if (/Na-adjective|adjectival noun/i.test(all)) return 'na';
+    return null;
+  };
+
+  const targets = [
+    ...ALL_VERBS.map((v) => ({ word: v.word, reading: v.reading, ours: v.verbClass })),
+    ...ALL_ADJECTIVES.map((a) => ({ word: a.word, reading: a.reading, ours: a.adjectiveClass })),
+  ];
+
+  let n = 0;
+  for (const t of targets) {
+    const results = await lookup(t.word);
+    const entry = results.find((r) =>
+      r.japanese.some((j) => j.word === t.word || j.reading === t.word),
+    );
+    const tags = entry?.senses.flatMap((sense) => sense.parts_of_speech) ?? [];
+    const theirs = classify(tags);
+
+    // 行く carries its own special-class tag but conjugates as godan apart
+    // from the て-form, which the data already overrides.
+    const ours = t.word === '行く' ? 'godan' : t.ours;
+
+    if (theirs === null) unknown.push(`${t.word} — no class in "${tags.join(', ')}"`);
+    else if (theirs !== ours) {
+      wrong.push(`${t.word} (${t.reading}): ours "${ours}", dictionary says "${theirs}" [${tags.slice(0, 3).join(', ')}]`);
+    }
+    n += 1;
+    if (n % 25 === 0) {
+      process.stderr.write(`  ...${n}/${targets.length}
+`);
+      writeFileSync(CACHE, JSON.stringify(cache));
+    }
+  }
+
+  writeFileSync(CACHE, JSON.stringify(cache));
+  console.log(`
+Checked ${targets.length} conjugation classes against JMdict.`);
+  console.log(`
+### Class disagrees (${wrong.length})`);
+  for (const line of wrong) console.log(`  ${line}`);
+  console.log(`
+### No class stated (${unknown.length})`);
+  for (const line of unknown) console.log(`  ${line}`);
+  console.log(`
+clean: ${targets.length - wrong.length - unknown.length}/${targets.length}`);
+  process.exit(wrong.length ? 1 : 0);
+}
 
 const missing: string[] = [];
 const readingIssues: string[] = [];

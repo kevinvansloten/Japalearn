@@ -136,6 +136,59 @@ export function savePref(key: string, value: unknown): void {
   write(store);
 }
 
+/**
+ * Everything worth keeping, as JSON. localStorage is one cleared cache away
+ * from gone, and the schedule represents weeks of work that cannot be
+ * reconstructed, so it is worth being able to take a copy.
+ */
+export function exportProgress(): string {
+  const store = read();
+  return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), ...store }, null, 2);
+}
+
+export interface ImportResult {
+  ok: boolean;
+  items: number;
+  message: string;
+}
+
+/** Replaces saved progress with the contents of a previous export. */
+export function importProgress(json: string): ImportResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return { ok: false, items: 0, message: 'That file is not valid JSON.' };
+  }
+
+  const candidate = parsed as Partial<Store>;
+  if (!candidate || typeof candidate !== 'object' || typeof candidate.items !== 'object') {
+    return { ok: false, items: 0, message: 'That does not look like a JapanLearner export.' };
+  }
+
+  // Keep only entries shaped like real stats, so a malformed file cannot
+  // poison the scheduler with NaN due dates.
+  const items: Record<string, ItemStats> = {};
+  for (const [id, value] of Object.entries(candidate.items ?? {})) {
+    const v = value as Partial<ItemStats>;
+    if (typeof v?.right !== 'number' || typeof v?.wrong !== 'number') continue;
+    items[id] = {
+      right: v.right,
+      wrong: v.wrong,
+      lastSeen: typeof v.lastSeen === 'number' ? v.lastSeen : 0,
+      ...(typeof v.box === 'number' ? { box: v.box } : {}),
+      ...(typeof v.due === 'number' ? { due: v.due } : {}),
+    };
+  }
+
+  write({ items, prefs: (candidate.prefs as Record<string, unknown>) ?? {} });
+  return {
+    ok: true,
+    items: Object.keys(items).length,
+    message: `Restored ${Object.keys(items).length} items.`,
+  };
+}
+
 export function resetProgress(): void {
   const store = read();
   const { newIntroduced: _discarded, ...prefs } = store.prefs;

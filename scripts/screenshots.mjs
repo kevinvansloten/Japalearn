@@ -139,6 +139,12 @@ await evaluate(`(() => {
     inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type', listening: 'type' },
     flow: 'mistakes', order: 'ordered',
   };
+  store.prefs.conjugation = {
+    groupIds: ['godan'], excluded: [], verbForms: ['masu', 'te'],
+    adjectiveForms: ['negative', 'past'], modes: ['produce'],
+    inputModes: { produce: 'type', identify: 'choice', dictionary: 'type' },
+    flow: 'mistakes', order: 'shuffled',
+  };
   store.prefs.words = {
     groupIds: ['pointing'], excluded: [], modes: ['meaning'],
     inputModes: { meaning: 'type', reading: 'type', recall: 'choice', listening: 'type' },
@@ -157,7 +163,7 @@ await evaluate(`(() => {
   return 'seeded';
 })()`);
 await goto(BASE);
-await shot('home', 1010);
+await shot('home', 1120);
 
 // ------------------------------------------------------- 2. kanji quiz
 

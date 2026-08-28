@@ -1,7 +1,8 @@
 # 日本 JapanLearner
 
-A practice app for learning Japanese, covering N5 across four decks: the kana,
-the kanji, the counters and dates that never behave, and the core vocabulary. It schedules your reviews, so
+A practice app for learning Japanese, covering N5 across five decks: the kana,
+the kanji, the counters and dates that never behave, the core vocabulary, and
+how verbs and adjectives conjugate. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
 you can still pick exactly what to drill and how to be asked.
 
@@ -177,6 +178,7 @@ meanings that are not corroborated, and forms with no dictionary entry at all.
 npm run check:data            # the vocabulary deck
 npm run check:data counters   # counters, dates and times
 npm run check:data kanjivocab # the kanji deck's example words
+npm run check:data verbs      # conjugation classes, against the POS tags
 ```
 
 This only ever reads. Nothing fetched is written into the repository, so the
@@ -188,6 +190,29 @@ compositional (七台, 六千) and simply unverifiable this way; an uncorroborat
 meaning is often just a simpler learner gloss. A **reading that disagrees** is
 the one to take seriously. At the last run there were none, across 553
 dictionary-backed entries.
+
+## Conjugation
+
+The one deck whose answers are not written down anywhere. Given a verb and its
+class, every form is derived: 書く becomes 書きます, 書いて, 書かない and 書いた
+by rule, so the forms are exactly as correct as the rules and the class are.
+
+| | Forms |
+| --- | --- |
+| Verbs | ます, ません, ました, て-form, ない, plain past |
+| い-adjectives | くない, かった, くなかった |
+| な-adjectives | じゃない, だった, じゃなかった |
+
+Grouped by class, because the class is what decides how a word behaves — with
+帰る, 入る, 走る and 知る in their own group, since they end in る and conjugate
+as godan anyway. Ask for the form, name a form you are shown, or work back to
+the dictionary form. Typed answers accept romaji, kana or the written form:
+かいて, `kaite` and 書いて all count.
+
+That leaves the class as the only fallible input, and misfiling one verb would
+make every one of its forms wrong. So `npm run check:data verbs` checks each
+one against the dictionary's own part-of-speech tag, and the rules themselves
+are pinned by a table of about sixty known conjugations.
 
 ## How a session runs
 
@@ -257,7 +282,13 @@ articles and a leading "to", so `go` and `to go` both count.
 
 Everything is stored in `localStorage`: lifetime accuracy per item, which drives
 the *giving you the most trouble* list and the mastery dots in the kanji picker,
-plus each item's box and due date. There is a reset button on the home screen.
+plus each item's box and due date.
+
+Because that is one cleared cache away from gone, and a schedule represents
+weeks of work that cannot be reconstructed, the home screen can export it all
+as JSON and import it back. Importing replaces what is there and drops any
+entry that is not shaped like real stats, so a malformed file cannot put a NaN
+due date into the scheduler.
 
 ![The home screen showing both decks with lifetime accuracy and a list of the weakest kanji](docs/screenshots/home.png)
 
@@ -268,11 +299,12 @@ src/data/         kana, kanji, counter and vocabulary datasets, plus look-alikes
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
+src/lib/conjugate the conjugation rules
 src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, the four setup screens, quiz, results
+src/components/   home, the five setup screens, quiz, results
 tests/            romaji, session-engine, scheduling and storage tests
 scripts/          screenshot capture, and the JMdict cross-check
 ```
@@ -291,7 +323,7 @@ multiple-choice question has exactly one correct option.
 
 ## Ideas for later
 
-- Particle and conjugation drills
+- Particle drills, and sentences built from them
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond
 
