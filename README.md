@@ -27,7 +27,8 @@ Then open http://localhost:5173.
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build |
-| `npm test` | Romaji conversion and session-engine tests |
+| `npm test` | Romaji, session-engine, scheduling and dataset tests |
+| `npm run check:data` | Cross-check the datasets against JMdict (needs network) |
 | `npm run typecheck` | `tsc --noEmit` |
 
 ## Hiragana & katakana
@@ -153,15 +154,40 @@ answer would be the question.
 Words that also appear as examples in the kanji deck — 食べる, 学校, 今日 —
 share one schedule rather than being asked as two separate items.
 
-### Where the data comes from
+## Checking the data
 
-This deck is hand-authored rather than imported. The obvious sources are
+The datasets are hand-authored rather than imported. The obvious sources are
 CC-BY-SA, and share-alike data inside an MIT repository is a licensing tangle
-that is painful to unpick later. The trade-off is that mistakes are mine, so
-the tests hold the file to the same standard as the counters: every reading
-must be kana and must survive the app's own romaji conversion, every meaning
-must satisfy the matcher that grades it, and no two words may share a canonical
-meaning — otherwise "meaning → word" would have two defensible answers.
+that is painful to unpick later. That keeps the licence clean but puts the
+burden of correctness on the author, so correctness is checked two ways.
+
+**Internally**, by `npm test`. Every reading must be kana and must survive the
+app's own romaji conversion, every meaning must satisfy the matcher that grades
+it, no two words may share a canonical meaning — otherwise "meaning → word"
+has two defensible answers — and every multiple-choice question must have
+exactly one correct option. The decks also overlap: 51 words and 24 counter
+forms also appear as examples in the kanji deck, and where they overlap they
+must agree.
+
+**Externally**, by `npm run check:data`, which cross-references every entry
+against JMdict through the Jisho API and reports readings that disagree,
+meanings that are not corroborated, and forms with no dictionary entry at all.
+
+```bash
+npm run check:data            # the vocabulary deck
+npm run check:data counters   # counters, dates and times
+npm run check:data kanjivocab # the kanji deck's example words
+```
+
+This only ever reads. Nothing fetched is written into the repository, so the
+licensing question that kept JMdict out of the data files does not arise — it
+is a reference being consulted, not a source being redistributed.
+
+Not every finding is a bug. A form the dictionary does not list is usually
+compositional (七台, 六千) and simply unverifiable this way; an uncorroborated
+meaning is often just a simpler learner gloss. A **reading that disagrees** is
+the one to take seriously. At the last run there were none, across 553
+dictionary-backed entries.
 
 ## How a session runs
 
@@ -248,7 +274,7 @@ src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
 src/components/   home, the four setup screens, quiz, results
 tests/            romaji, session-engine, scheduling and storage tests
-scripts/          regenerates the README screenshots
+scripts/          screenshot capture, and the JMdict cross-check
 ```
 
 The session engine is deck-agnostic: every deck compiles down to a list of

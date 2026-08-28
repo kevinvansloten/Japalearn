@@ -16,5 +16,5 @@
     "useDefineForClassFields": true,
     "allowImportingTsExtensions": false
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["src", "tests", "scripts", "vite.config.ts"]
 }
