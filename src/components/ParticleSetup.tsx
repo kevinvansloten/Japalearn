@@ -1,11 +1,8 @@
 import { PARTICLE_GROUPS } from '../data/particles';
 import { buildParticleCards, particlePool, type ParticleConfig } from '../lib/buildCards';
 import type { Card, InputMode } from '../lib/session';
-import { Chip, FlowPicker, Panel, Segmented, SelectAll } from './ui';
-
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
+import { DeckPicker, SetupHeader, StartBar } from './DeckPicker';
+import { FlowPicker, Panel, Segmented } from './ui';
 
 interface Props {
   config: ParticleConfig;
@@ -16,89 +13,37 @@ interface Props {
 
 export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
   const patch = (update: Partial<ParticleConfig>) => onChange({ ...config, ...update });
-
   const cards = buildParticleCards(config);
-  const ready = cards.length > 0;
-  const selected = particlePool(config);
 
-  const setGroupSentences = (groupId: string, include: boolean) => {
-    const group = PARTICLE_GROUPS.find((g) => g.id === groupId);
-    if (!group) return;
-    const texts = group.sentences.map((s) => s.text);
-    patch({
-      excluded: include
-        ? config.excluded.filter((t) => !texts.includes(t))
-        : [...new Set([...config.excluded, ...texts])],
-    });
-  };
+  const groups = PARTICLE_GROUPS.map((group) => ({
+    id: group.id,
+    label: group.label,
+    blurb: group.blurb,
+    items: group.sentences.map((sentence) => ({
+      key: sentence.text,
+      label: sentence.text,
+      title: sentence.english,
+    })),
+  }));
 
   return (
     <div className="stack">
-      <div className="row between">
-        <div>
-          <strong>Particles</strong>
-          <div className="faint">{selected.length} sentences</div>
-        </div>
-        <button type="button" className="btn ghost" onClick={onHome}>
-          Home
-        </button>
-      </div>
+      <SetupHeader
+        title="Particles"
+        subtitle={`${particlePool(config).length} sentences`}
+        onHome={onHome}
+      />
 
-      <Panel
+      <DeckPicker
         title="Which particles?"
         hint="Grouped by what the particle does, since that is what decides which one a sentence takes."
-        aside={
-          <SelectAll
-            all={() => patch({ groupIds: PARTICLE_GROUPS.map((g) => g.id), excluded: [] })}
-            none={() => patch({ groupIds: [] })}
-          />
-        }
-      >
-        {PARTICLE_GROUPS.map((group) => {
-          const on = config.groupIds.includes(group.id);
-          const included = group.sentences.filter((s) => !config.excluded.includes(s.text)).length;
-          return (
-            <div className="group-block" key={group.id}>
-              <div className="group-head">
-                <div>
-                  <Chip
-                    pressed={on}
-                    onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
-                  >
-                    {group.label} · {included}/{group.sentences.length}
-                  </Chip>
-                  <div className="hint" style={{ marginTop: 4 }}>
-                    {group.blurb}
-                  </div>
-                </div>
-                {on && (
-                  <SelectAll
-                    all={() => setGroupSentences(group.id, true)}
-                    none={() => setGroupSentences(group.id, false)}
-                  />
-                )}
-              </div>
-
-              {on && (
-                <div className="sentence-picker">
-                  {group.sentences.map((sentence) => (
-                    <button
-                      key={sentence.text}
-                      type="button"
-                      className="sentence-toggle"
-                      aria-pressed={!config.excluded.includes(sentence.text)}
-                      title={sentence.english}
-                      onClick={() => patch({ excluded: toggle(config.excluded, sentence.text) })}
-                    >
-                      {sentence.text}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </Panel>
+        groups={groups}
+        groupIds={config.groupIds}
+        excluded={config.excluded}
+        onGroups={(groupIds) => patch({ groupIds })}
+        onExcluded={(excluded) => patch({ excluded })}
+        itemLayout="block"
+      />
 
       <Panel title="How should you answer?">
         <div className="row">
@@ -125,16 +70,12 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <div className="row">
-        <button
-          type="button"
-          className="btn primary big"
-          disabled={!ready}
-          onClick={() => onStart(cards)}
-        >
-          {ready ? `Start — ${cards.length} sentences` : 'Pick at least one group'}
-        </button>
-      </div>
+      <StartBar
+        count={cards.length}
+        noun="sentences"
+        empty="Pick at least one group"
+        onStart={() => onStart(cards)}
+      />
     </div>
   );
 }
