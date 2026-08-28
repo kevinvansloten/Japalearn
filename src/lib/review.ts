@@ -12,18 +12,30 @@
  */
 import { COUNTER_GROUPS } from '../data/counters';
 import { KANA_GROUPS } from '../data/kana';
+import { WORD_GROUPS } from '../data/words';
 import { KANJI_GROUPS } from '../data/kanji';
 import {
   buildCounterCards,
   buildKanaCards,
   buildKanjiCards,
+  buildWordCards,
   type CounterConfig,
   type KanaConfig,
   type KanjiConfig,
+  type WordConfig,
 } from './buildCards';
 import { isDue, isNew } from './schedule';
 import { shuffle, type Card } from './session';
 import type { ItemStats } from './storage';
+
+/** Every deck's current settings. One field per deck, so adding another does
+ *  not grow an argument list that three call sites have to track. */
+export interface Decks {
+  kana: KanaConfig;
+  kanji: KanjiConfig;
+  counters: CounterConfig;
+  words: WordConfig;
+}
 
 export interface ReviewPlan {
   cards: Card[];
@@ -46,13 +58,12 @@ const indexByItem = (cards: Card[]): Map<string, Card[]> => {
 const pick = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
 
 export function planReview(
-  kana: KanaConfig,
-  kanji: KanjiConfig,
-  counters: CounterConfig,
+  decks: Decks,
   stats: Record<string, ItemStats>,
   newAllowance: number,
   now = Date.now(),
 ): ReviewPlan {
+  const { kana, kanji, counters, words } = decks;
   // Everything askable in the modes currently enabled, ignoring group
   // selection, so a due item can always be built into a card.
   const everything = [
@@ -67,14 +78,22 @@ export function planReview(
       groupIds: COUNTER_GROUPS.map((g) => g.id),
       excluded: [],
     }),
+    ...buildWordCards({
+      ...words,
+      groupIds: WORD_GROUPS.map((g) => g.id),
+      excluded: [],
+    }),
   ];
   const index = indexByItem(everything);
 
   // What the learner has actually chosen to study right now.
   const selected = new Set(
-    [...buildKanaCards(kana), ...buildKanjiCards(kanji), ...buildCounterCards(counters)].map(
-      (c) => c.itemId,
-    ),
+    [
+      ...buildKanaCards(kana),
+      ...buildKanjiCards(kanji),
+      ...buildCounterCards(counters),
+      ...buildWordCards(words),
+    ].map((c) => c.itemId),
   );
 
   const dueIds: string[] = [];

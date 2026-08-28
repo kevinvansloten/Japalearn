@@ -1,8 +1,7 @@
 # 日本 JapanLearner
 
-A practice app for learning Japanese: drill the kana until they are automatic,
-work through the JLPT N5 kanji in groups, and get the counters and dates that
-never behave. It schedules your reviews, so
+A practice app for learning Japanese, covering N5 across four decks: the kana,
+the kanji, the counters and dates that never behave, and the core vocabulary. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
 you can still pick exactly what to drill and how to be asked.
 
@@ -128,6 +127,42 @@ Anything whose reading shifts is marked in the picker and called out when the
 answer is revealed, so you learn the pattern rather than 160 separate facts.
 Ask for the reading, the meaning, or hear it and write it down.
 
+## Vocabulary — N5
+
+230 core words in ten sets, including the ones a kanji deck can never reach
+because they are simply written in kana: これ, それ, どこ, とても, たくさん,
+ちょっと, ありがとう.
+
+| Set | What is in it |
+| --- | --- |
+| This, that & which | The こそあど words and the question words |
+| People & family | わたし, ともだち, お母さん, 先生 |
+| Things around you | かばん, かさ, 時計, 手紙, 自転車 |
+| Places | 学校, 銀行, 郵便局, 部屋 |
+| Time words | 今日, 明日, 毎日, 先週 |
+| Food & drink | ご飯, 野菜, お茶, 飲み物 |
+| Verbs | 行く, 食べる, 分かる, 働く |
+| Adjectives | 大きい, 新しい, 忙しい, 静か |
+| Adverbs & useful words | とても, 少し, いつも, あまり |
+| Greetings & set phrases | こんにちは, すみません, いただきます |
+
+Ask for the meaning, the reading, the word from its meaning, or hear it and
+write it down. Words already written in kana get no reading card, because the
+answer would be the question.
+
+Words that also appear as examples in the kanji deck — 食べる, 学校, 今日 —
+share one schedule rather than being asked as two separate items.
+
+### Where the data comes from
+
+This deck is hand-authored rather than imported. The obvious sources are
+CC-BY-SA, and share-alike data inside an MIT repository is a licensing tangle
+that is painful to unpick later. The trade-off is that mistakes are mine, so
+the tests hold the file to the same standard as the counters: every reading
+must be kana and must survive the app's own romaji conversion, every meaning
+must satisfy the matcher that grades it, and no two words may share a canonical
+meaning — otherwise "meaning → word" would have two defensible answers.
+
 ## How a session runs
 
 Pick the shape of the session independently of what is in it:
@@ -203,7 +238,7 @@ plus each item's box and due date. There is a reset button on the home screen.
 ## Project layout
 
 ```
-src/data/         kana, kanji and counter datasets, plus the look-alike sets
+src/data/         kana, kanji, counter and vocabulary datasets, plus look-alikes
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
@@ -211,7 +246,7 @@ src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, the three setup screens, quiz, results
+src/components/   home, the four setup screens, quiz, results
 tests/            romaji, session-engine, scheduling and storage tests
 scripts/          regenerates the README screenshots
 ```
@@ -230,7 +265,6 @@ multiple-choice question has exactly one correct option.
 
 ## Ideas for later
 
-- A full N5 vocabulary deck, including the kana-only words
 - Particle and conjugation drills
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond

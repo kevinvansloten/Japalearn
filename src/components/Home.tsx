@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ALL_KANA } from '../data/kana';
 import { ALL_COUNTERS } from '../data/counters';
 import { ALL_KANJI } from '../data/kanji';
+import { ALL_WORDS } from '../data/words';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
 import { itemAccuracy, loadItemStats, resetProgress } from '../lib/storage';
@@ -12,6 +13,7 @@ interface Props {
   onKana: () => void;
   onKanji: () => void;
   onCounters: () => void;
+  onWords: () => void;
   onReset: () => void;
 }
 
@@ -21,7 +23,7 @@ interface Summary {
   accuracy: number | null;
 }
 
-export function Home({ plan, onReview, onKana, onKanji, onCounters, onReset }: Props) {
+export function Home({ plan, onReview, onKana, onKanji, onCounters, onWords, onReset }: Props) {
   const stats = useMemo(() => loadItemStats(), []);
   const now = Date.now();
   const upcoming = nextDueAt(stats, now);
@@ -47,7 +49,8 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onReset }: P
   const kana = summarise(ALL_KANA.map((k) => `kana:${k.id}`));
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
   const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
-  const anyProgress = kana.seen + kanji.seen + counters.seen > 0;
+  const words = summarise(ALL_WORDS.map((w) => `vocab:${w.word}`));
+  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen > 0;
 
   const weakest = useMemo(() => {
     return ALL_KANJI.map((k) => ({ char: k.char, meaning: k.meanings[0], acc: itemAccuracy(stats[`kanji:${k.char}`]) }))
@@ -59,8 +62,8 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onReset }: P
   return (
     <div className="stack">
       <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
-        Drill the kana until they are automatic, then work through the N5 kanji in groups. Pick
-        what to include, how you want to be asked, and how the session should run.
+        Four decks covering N5: the kana, the kanji, the counters that never behave, and the core
+        vocabulary. Review what is due, or pick a deck and drill exactly what you choose.
       </p>
 
       <section className="review-panel" data-ready={plan.cards.length > 0}>
@@ -120,6 +123,15 @@ export function Home({ plan, onReview, onKana, onKanji, onCounters, onReset }: P
             {ALL_COUNTERS.length} forms where the number changes shape — ろっぽん, ついたち, よじ.
           </p>
           <Progress summary={counters} unit="forms" />
+        </button>
+
+        <button type="button" className="home-card" onClick={onWords}>
+          <span className="big">これ 手紙</span>
+          <h2>Vocabulary — N5</h2>
+          <p>
+            {ALL_WORDS.length} core words, including the kana-only ones no kanji deck can reach.
+          </p>
+          <Progress summary={words} unit="words" />
         </button>
       </div>
 

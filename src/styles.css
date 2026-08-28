@@ -707,7 +707,8 @@ input {
 
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* Wide enough that four decks land as an even 2x2 rather than 3 + 1. */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 14px;
 }
 
