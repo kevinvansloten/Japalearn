@@ -12,13 +12,16 @@
  */
 import { COUNTER_GROUPS } from '../data/counters';
 import { KANA_GROUPS } from '../data/kana';
+import { CONJUGATION_GROUPS } from '../data/conjugation';
 import { WORD_GROUPS } from '../data/words';
 import { KANJI_GROUPS } from '../data/kanji';
 import {
   buildCounterCards,
   buildKanaCards,
   buildKanjiCards,
+  buildConjugationCards,
   buildWordCards,
+  type ConjugationConfig,
   type CounterConfig,
   type KanaConfig,
   type KanjiConfig,
@@ -35,6 +38,7 @@ export interface Decks {
   kanji: KanjiConfig;
   counters: CounterConfig;
   words: WordConfig;
+  conjugation: ConjugationConfig;
 }
 
 export interface ReviewPlan {
@@ -63,7 +67,7 @@ export function planReview(
   newAllowance: number,
   now = Date.now(),
 ): ReviewPlan {
-  const { kana, kanji, counters, words } = decks;
+  const { kana, kanji, counters, words, conjugation } = decks;
   // Everything askable in the modes currently enabled, ignoring group
   // selection, so a due item can always be built into a card.
   const everything = [
@@ -83,6 +87,11 @@ export function planReview(
       groupIds: WORD_GROUPS.map((g) => g.id),
       excluded: [],
     }),
+    ...buildConjugationCards({
+      ...conjugation,
+      groupIds: CONJUGATION_GROUPS.map((g) => g.id),
+      excluded: [],
+    }),
   ];
   const index = indexByItem(everything);
 
@@ -93,6 +102,7 @@ export function planReview(
       ...buildKanjiCards(kanji),
       ...buildCounterCards(counters),
       ...buildWordCards(words),
+      ...buildConjugationCards(conjugation),
     ].map((c) => c.itemId),
   );
 

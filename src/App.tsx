@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KANA_GROUPS } from './data/kana';
-import type { CounterConfig, KanaConfig, KanjiConfig, WordConfig } from './lib/buildCards';
+import type {
+  ConjugationConfig,
+  CounterConfig,
+  KanaConfig,
+  KanjiConfig,
+  WordConfig,
+} from './lib/buildCards';
 import type { Card, SessionOptions } from './lib/session';
 import { planReview } from './lib/review';
 import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
@@ -9,6 +15,7 @@ import { KanaSetup } from './components/KanaSetup';
 import { CounterSetup } from './components/CounterSetup';
 import { KanjiSetup } from './components/KanjiSetup';
 import { WordSetup } from './components/WordSetup';
+import { ConjugationSetup } from './components/ConjugationSetup';
 import { Quiz } from './components/Quiz';
 
 const DEFAULT_KANA: KanaConfig = {
@@ -46,7 +53,18 @@ const DEFAULT_WORDS: WordConfig = {
   order: 'shuffled',
 };
 
-type Screen = 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'quiz';
+const DEFAULT_CONJUGATION: ConjugationConfig = {
+  groupIds: ['ichidan'],
+  excluded: [],
+  verbForms: ['masu', 'te'],
+  adjectiveForms: ['negative', 'past'],
+  modes: ['produce'],
+  inputModes: { produce: 'type', identify: 'choice', dictionary: 'type' },
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
+type Screen = 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -54,7 +72,7 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters' | 'words';
+  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -96,6 +114,16 @@ export default function App() {
     };
   });
 
+  const [conjugationConfig, setConjugationConfig] = useState<ConjugationConfig>(() => {
+    const saved = loadPref<Partial<ConjugationConfig>>('conjugation', {});
+    return {
+      ...DEFAULT_CONJUGATION,
+      ...saved,
+      inputModes: { ...DEFAULT_CONJUGATION.inputModes, ...saved.inputModes },
+    };
+  });
+
+  useEffect(() => savePref('conjugation', conjugationConfig), [conjugationConfig]);
   useEffect(() => savePref('words', wordConfig), [wordConfig]);
   useEffect(() => savePref('counters', counterConfig), [counterConfig]);
   useEffect(() => savePref('kana', kanaConfig), [kanaConfig]);
@@ -105,7 +133,10 @@ export default function App() {
     title: string,
     cards: Card[],
     options: SessionOptions,
-    extra: { back?: 'kana' | 'kanji' | 'counters' | 'words'; scheduled?: boolean } = {},
+    extra: {
+      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation';
+      scheduled?: boolean;
+    } = {},
   ) => {
     setRun((previous) => ({ id: (previous?.id ?? 0) + 1, title, cards, options, ...extra }));
     setScreen('quiz');
@@ -116,11 +147,17 @@ export default function App() {
   const plan = useMemo(
     () =>
       planReview(
-        { kana: kanaConfig, kanji: kanjiConfig, counters: counterConfig, words: wordConfig },
+        {
+          kana: kanaConfig,
+          kanji: kanjiConfig,
+          counters: counterConfig,
+          words: wordConfig,
+          conjugation: conjugationConfig,
+        },
         loadItemStats(),
         newAllowanceToday(),
       ),
-    [kanaConfig, kanjiConfig, counterConfig, wordConfig, version],
+    [kanaConfig, kanjiConfig, counterConfig, wordConfig, conjugationConfig, version],
   );
 
   const goHome = () => {
@@ -159,6 +196,7 @@ export default function App() {
           onKanji={() => setScreen('kanji')}
           onCounters={() => setScreen('counters')}
           onWords={() => setScreen('words')}
+          onConjugation={() => setScreen('conjugation')}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}
@@ -222,6 +260,22 @@ export default function App() {
               cards,
               { flow: wordConfig.flow, order: wordConfig.order },
               { back: 'words' },
+            )
+          }
+        />
+      )}
+
+      {screen === 'conjugation' && (
+        <ConjugationSetup
+          config={conjugationConfig}
+          onChange={setConjugationConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              'Conjugation',
+              cards,
+              { flow: conjugationConfig.flow, order: conjugationConfig.order },
+              { back: 'conjugation' },
             )
           }
         />

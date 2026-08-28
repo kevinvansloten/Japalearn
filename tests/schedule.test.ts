@@ -1,6 +1,12 @@
 import { KANA_GROUPS } from '../src/data/kana';
 import { KANJI_GROUPS } from '../src/data/kanji';
-import type { CounterConfig, KanaConfig, KanjiConfig, WordConfig } from '../src/lib/buildCards';
+import type {
+  ConjugationConfig,
+  CounterConfig,
+  KanaConfig,
+  KanjiConfig,
+  WordConfig,
+} from '../src/lib/buildCards';
 import { planReview, type Decks } from '../src/lib/review';
 import {
   BOX_INTERVALS,
@@ -95,7 +101,18 @@ const words: WordConfig = {
   order: 'ordered',
 };
 
-const decks: Decks = { kana, kanji, counters, words };
+const conjugation: ConjugationConfig = {
+  groupIds: [],
+  excluded: [],
+  verbForms: ['te'],
+  adjectiveForms: ['negative'],
+  modes: ['produce'],
+  inputModes: { produce: 'type', identify: 'choice', dictionary: 'type' },
+  flow: 'once',
+  order: 'ordered',
+};
+
+const decks: Decks = { kana, kanji, counters, words, conjugation };
 
 const empty = planReview(decks, {}, 5, NOW);
 eq('a fresh account introduces up to the allowance', empty.cards.length, 5);

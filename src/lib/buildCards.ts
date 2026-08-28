@@ -1,6 +1,16 @@
 import { KANA_LOOKALIKES, KANJI_LOOKALIKES } from '../data/confusables';
 import { ALL_COUNTERS, type CounterItem } from '../data/counters';
 import { ALL_WORDS, hasKanji, type WordEntry } from '../data/words';
+import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
+import {
+  ADJECTIVE_FORM_LABEL,
+  VERB_FORM_LABEL,
+  conjugateAdjective,
+  conjugateVerb,
+  type AdjectiveForm,
+  type Conjugated,
+  type VerbForm,
+} from './conjugate';
 import { ALL_KANA, type KanaEntry } from '../data/kana';
 import { ALL_KANJI, type KanjiEntry } from '../data/kanji';
 import { checkMeaning, checkReading, kanaToRomaji } from './romaji';
@@ -532,6 +542,166 @@ export function buildWordCards(config: WordConfig): Card[] {
         answerScript: 'jp',
         details: wordDetails(entry),
         check: choice ? exact(entry.word) : (given) => checkReading(given, [entry.reading]),
+      });
+    }
+  }
+
+  return cards;
+}
+
+// ------------------------------------------------------------ conjugation
+
+export type ConjugationMode = 'produce' | 'identify' | 'dictionary';
+
+export interface ConjugationConfig {
+  groupIds: string[];
+  /** dictionary forms explicitly switched off inside a selected group */
+  excluded: string[];
+  verbForms: VerbForm[];
+  adjectiveForms: AdjectiveForm[];
+  modes: ConjugationMode[];
+  inputModes: Record<ConjugationMode, InputMode>;
+  flow: Flow;
+  order: Order;
+}
+
+export const CONJUGATION_MODE_LABEL: Record<ConjugationMode, string> = {
+  produce: 'Produce the form',
+  identify: 'Name the form',
+  dictionary: 'Back to the dictionary form',
+};
+
+export const CONJUGATION_MODE_BLURB: Record<ConjugationMode, string> = {
+  produce: 'See 書く and “て-form”, answer 書いて.',
+  identify: 'See 書いて, work out which form it is.',
+  dictionary: 'See 書きました, answer 書く.',
+};
+
+/** A dictionary entry paired with one of its conjugated forms. */
+interface Inflection {
+  dictionary: Conjugated;
+  meaning: string;
+  formId: string;
+  formLabel: string;
+  conjugated: Conjugated;
+  /** labels of the other forms of the same kind, for multiple choice */
+  siblingLabels: string[];
+}
+
+function inflectionsFor(config: ConjugationConfig): Inflection[] {
+  const out: Inflection[] = [];
+  const verbLabels = config.verbForms.map((f) => VERB_FORM_LABEL[f]);
+  const adjectiveLabels = config.adjectiveForms.map((f) => ADJECTIVE_FORM_LABEL[f]);
+
+  for (const entry of ALL_VERBS) {
+    if (!config.groupIds.includes(entry.groupId) || config.excluded.includes(entry.word)) continue;
+    const dictionary = { word: entry.word, reading: entry.reading };
+    for (const form of config.verbForms) {
+      out.push({
+        dictionary,
+        meaning: entry.meaning,
+        formId: form,
+        formLabel: VERB_FORM_LABEL[form],
+        conjugated: conjugateVerb(dictionary, entry.verbClass, form, entry.overrides),
+        siblingLabels: verbLabels,
+      });
+    }
+  }
+
+  for (const entry of ALL_ADJECTIVES) {
+    if (!config.groupIds.includes(entry.groupId) || config.excluded.includes(entry.word)) continue;
+    const dictionary = { word: entry.word, reading: entry.reading };
+    for (const form of config.adjectiveForms) {
+      out.push({
+        dictionary,
+        meaning: entry.meaning,
+        formId: form,
+        formLabel: ADJECTIVE_FORM_LABEL[form],
+        conjugated: conjugateAdjective(dictionary, entry.adjectiveClass, form, entry.overrides),
+        siblingLabels: adjectiveLabels,
+      });
+    }
+  }
+
+  return out;
+}
+
+/** Accept the written form, the kana reading, or romaji for either. */
+const acceptForm = (target: Conjugated) => (given: string) => {
+  const answer = given.trim();
+  return answer === target.word || checkReading(answer, [target.reading]);
+};
+
+export function buildConjugationCards(config: ConjugationConfig): Card[] {
+  const inflections = inflectionsFor(config);
+  const cards: Card[] = [];
+
+  const conjugatedPool = inflections.map((i) => i.conjugated.word);
+  const dictionaryPool = [...new Set(inflections.map((i) => i.dictionary.word))];
+
+  for (const item of inflections) {
+    const itemId = `conj:${item.dictionary.word}`;
+    const detail = [
+      `${item.dictionary.word}（${item.dictionary.reading}）— ${item.meaning}`,
+      `${item.formLabel}: ${item.conjugated.word}（${item.conjugated.reading}）`,
+    ];
+
+    if (config.modes.includes('produce')) {
+      const choice = config.inputModes.produce === 'choice';
+      cards.push({
+        id: `conj-produce-${item.dictionary.word}-${item.formId}`,
+        itemId,
+        question: choice ? 'Pick the right form' : 'Write this form',
+        prompt: item.dictionary.word,
+        promptScript: 'jp',
+        promptNote: item.formLabel,
+        inputMode: config.inputModes.produce,
+        placeholder: 'romaji or kana',
+        speech: item.conjugated.reading,
+        choices: choice ? pickChoices(item.conjugated.word, conjugatedPool) : undefined,
+        answer: `${item.conjugated.word}（${item.conjugated.reading}）`,
+        answerScript: 'jp',
+        details: detail,
+        check: choice ? exact(item.conjugated.word) : acceptForm(item.conjugated),
+      });
+    }
+
+    if (config.modes.includes('identify')) {
+      cards.push({
+        id: `conj-identify-${item.dictionary.word}-${item.formId}`,
+        itemId,
+        question: 'Which form is this?',
+        prompt: item.conjugated.word,
+        promptScript: 'jp',
+        promptNote: item.meaning,
+        // Naming a grammatical form is a recognition task, never typed.
+        inputMode: 'choice',
+        speech: item.conjugated.reading,
+        choices: pickChoices(item.formLabel, item.siblingLabels),
+        answer: item.formLabel,
+        answerScript: 'latin',
+        details: detail,
+        check: exact(item.formLabel),
+      });
+    }
+
+    if (config.modes.includes('dictionary')) {
+      const choice = config.inputModes.dictionary === 'choice';
+      cards.push({
+        id: `conj-dictionary-${item.dictionary.word}-${item.formId}`,
+        itemId,
+        question: choice ? 'Which is the dictionary form?' : 'Write the dictionary form',
+        prompt: item.conjugated.word,
+        promptScript: 'jp',
+        promptNote: item.formLabel,
+        inputMode: config.inputModes.dictionary,
+        placeholder: 'romaji or kana',
+        speech: item.dictionary.reading,
+        choices: choice ? pickChoices(item.dictionary.word, dictionaryPool) : undefined,
+        answer: `${item.dictionary.word}（${item.dictionary.reading}）`,
+        answerScript: 'jp',
+        details: detail,
+        check: choice ? exact(item.dictionary.word) : acceptForm(item.dictionary),
       });
     }
   }
