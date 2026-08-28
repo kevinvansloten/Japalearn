@@ -365,6 +365,54 @@ input {
   border-radius: 50%;
 }
 
+.item-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.item-toggle {
+  min-width: 44px;
+  height: 42px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  font-family: var(--jp);
+  font-size: 18px;
+  color: var(--text-faint);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.item-toggle[aria-pressed='true'] {
+  color: var(--text);
+  border-color: var(--line-strong);
+  background: var(--bg-raised);
+}
+
+.item-toggle .dot {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+/* Marks a form whose reading shifts, e.g. 六本 -> ろっぽん. */
+.item-toggle .warn {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
 /* -------------------------------------------------------------- quiz */
 
 .quiz {
@@ -722,11 +770,58 @@ input {
   background: var(--bg-sunken);
 }
 
+/*
+ * On a phone the whole point is that the card and its feedback fit together,
+ * so everything in the quiz tightens up rather than just reflowing.
+ */
 @media (max-width: 560px) {
-  .glyph {
-    font-size: 80px;
+  .app {
+    padding: 16px 14px 60px;
   }
+
+  .glyph {
+    font-size: 68px;
+    margin: 2px 0;
+  }
+
+  .glyph.latin {
+    font-size: 32px;
+  }
+
+  .card {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
   .choice-grid {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .choice {
+    min-height: 48px;
+    padding: 10px;
+  }
+
+  .choice.jp {
+    font-size: 24px;
+  }
+
+  .listen {
+    width: 88px;
+    height: 88px;
+    margin: 8px auto 4px;
+  }
+
+  .quiz {
+    gap: 12px;
+  }
+
+  .btn.big {
+    padding: 11px 18px;
+  }
+
+  .review-panel {
+    padding: 16px;
   }
 }

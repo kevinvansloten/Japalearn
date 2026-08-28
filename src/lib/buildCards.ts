@@ -1,4 +1,5 @@
 import { KANA_LOOKALIKES, KANJI_LOOKALIKES } from '../data/confusables';
+import { ALL_COUNTERS, type CounterItem } from '../data/counters';
 import { ALL_KANA, type KanaEntry } from '../data/kana';
 import { ALL_KANJI, type KanjiEntry } from '../data/kanji';
 import { checkMeaning, checkReading, kanaToRomaji } from './romaji';
@@ -270,6 +271,120 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
           check: choice ? exact(word.word) : (given) => checkReading(given, [word.reading]),
         });
       }
+    }
+  }
+
+  return cards;
+}
+
+// ------------------------------------------------------------- counters
+
+export type CounterMode = 'reading' | 'meaning' | 'listening';
+
+export interface CounterConfig {
+  groupIds: string[];
+  /** forms explicitly switched off inside an otherwise selected group */
+  excluded: string[];
+  modes: CounterMode[];
+  inputModes: Record<CounterMode, InputMode>;
+  flow: Flow;
+  order: Order;
+}
+
+export const COUNTER_MODE_LABEL: Record<CounterMode, string> = {
+  reading: 'Written → reading',
+  meaning: 'Written → meaning',
+  listening: 'Listening',
+};
+
+export const COUNTER_MODE_BLURB: Record<CounterMode, string> = {
+  reading: 'See 六本, answer ろっぽん. This is where the sound changes live.',
+  meaning: 'See 二十歳, answer “twenty years old”.',
+  listening: 'Hear ろっぽん, work out which one it was.',
+};
+
+export function counterPool(config: CounterConfig): CounterItem[] {
+  return ALL_COUNTERS.filter(
+    (c) => config.groupIds.includes(c.groupId) && !config.excluded.includes(c.form),
+  );
+}
+
+const counterDetails = (item: CounterItem): string[] => {
+  const lines = [`${item.form}（${item.reading}）— ${item.meaning}`];
+  if (item.alt?.length) lines.push(`also read ${item.alt.join('、')}`);
+  if (item.irregular) lines.push('⚠ the reading shifts here — worth noting');
+  return lines;
+};
+
+export function buildCounterCards(config: CounterConfig): Card[] {
+  const pool = counterPool(config);
+  const cards: Card[] = [];
+
+  const readingPool = pool.map((c) => c.reading);
+  const meaningPool = pool.map((c) => c.meaning);
+  const formPool = pool.map((c) => c.form);
+
+  for (const item of pool) {
+    const accepted = [item.reading, ...(item.alt ?? [])];
+
+    if (config.modes.includes('reading')) {
+      const choice = config.inputModes.reading === 'choice';
+      cards.push({
+        id: `counter-reading-${item.form}`,
+        itemId: `counter:${item.form}`,
+        question: choice ? 'How is this read?' : 'Type the reading',
+        prompt: item.form,
+        promptScript: 'jp',
+        promptNote: item.meaning,
+        inputMode: config.inputModes.reading,
+        placeholder: 'romaji or kana',
+        speech: item.reading,
+        choices: choice ? pickChoices(item.reading, readingPool) : undefined,
+        answer: `${item.reading}（${kanaToRomaji(item.reading)}）`,
+        answerScript: 'jp',
+        details: counterDetails(item),
+        check: choice
+          ? exact(item.reading)
+          : (given) => checkReading(given, accepted),
+      });
+    }
+
+    if (config.modes.includes('meaning')) {
+      const choice = config.inputModes.meaning === 'choice';
+      cards.push({
+        id: `counter-meaning-${item.form}`,
+        itemId: `counter:${item.form}`,
+        question: 'What does this mean?',
+        prompt: item.form,
+        promptScript: 'jp',
+        inputMode: config.inputModes.meaning,
+        placeholder: 'meaning in English',
+        speech: item.reading,
+        choices: choice ? pickChoices(item.meaning, meaningPool) : undefined,
+        answer: item.meaning,
+        answerScript: 'latin',
+        details: counterDetails(item),
+        check: choice ? exact(item.meaning) : (given) => checkMeaning(given, [item.meaning]),
+      });
+    }
+
+    if (config.modes.includes('listening')) {
+      const choice = config.inputModes.listening === 'choice';
+      cards.push({
+        id: `counter-listening-${item.form}`,
+        itemId: `counter:${item.form}`,
+        question: choice ? 'Which one did you hear?' : 'Write down what you hear',
+        prompt: '',
+        promptScript: 'audio',
+        speech: item.reading,
+        inputMode: config.inputModes.listening,
+        placeholder: 'romaji or kana',
+        choices: choice ? pickChoices(item.form, formPool) : undefined,
+        answer: `${item.form}　${item.reading}`,
+        answerScript: 'jp',
+        details: counterDetails(item),
+        check: choice ? exact(item.form) : (given) => checkReading(given, accepted),
+      });
     }
   }
 

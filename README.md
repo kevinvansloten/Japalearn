@@ -1,7 +1,8 @@
 # 日本 JapanLearner
 
 A practice app for learning Japanese: drill the kana until they are automatic,
-then work through the JLPT N5 kanji in groups. It schedules your reviews, so
+work through the JLPT N5 kanji in groups, and get the counters and dates that
+never behave. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
 you can still pick exactly what to drill and how to be asked.
 
@@ -106,6 +107,27 @@ exercised over the weeks.
 Practising a deck yourself never touches the schedule — drilling something ten
 times in an afternoon should not push its next review out a month.
 
+## Counters, dates & times
+
+160 forms where the number changes shape in front of the counter. Nothing about
+knowing 本 tells you that 一本 is いっぽん, 三本 is さんぼん and 六本 is ろっぽん,
+so this is the part of N5 that has to be drilled rather than reasoned out.
+
+| Set | What is in it |
+| --- | --- |
+| Things & people | つ and 人 — ひとつ…ここのつ, ひとり, ふたり, よにん |
+| Long, flat & small | 本, 匹 and the mercifully regular 枚 |
+| Cups, books & machines | 杯, 冊, 台 |
+| Age | 歳, including 二十歳 = はたち |
+| Days of the month | ついたち, ふつか, みっか … はつか |
+| Telling the time | 時 and 分 — よじ, しちじ, くじ, いっぷん, ろっぷん |
+| Months | しがつ, しちがつ, くがつ |
+| Hundreds & thousands | さんびゃく, ろっぴゃく, はっぴゃく, さんぜん, はっせん |
+
+Anything whose reading shifts is marked in the picker and called out when the
+answer is revealed, so you learn the pattern rather than 160 separate facts.
+Ask for the reading, the meaning, or hear it and write it down.
+
 ## How a session runs
 
 Pick the shape of the session independently of what is in it:
@@ -181,7 +203,7 @@ plus each item's box and due date. There is a reset button on the home screen.
 ## Project layout
 
 ```
-src/data/         kana and kanji datasets, plus the look-alike sets
+src/data/         kana, kanji and counter datasets, plus the look-alike sets
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
@@ -189,15 +211,17 @@ src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, the two setup screens, quiz, results
+src/components/   home, the three setup screens, quiz, results
 tests/            romaji, session-engine, scheduling and storage tests
 scripts/          regenerates the README screenshots
 ```
 
-The session engine is deck-agnostic: both decks compile down to a list of
+The session engine is deck-agnostic: every deck compiles down to a list of
 `Card`s, each carrying its own prompt, accepted answers and grading function. So
-adding a deck — N4 kanji, a vocabulary list, counters — means writing a card
-builder, not another quiz screen.
+adding a deck — N4 kanji, a vocabulary list — means writing a card builder, not
+another quiz screen. The counters deck was exactly that: a dataset and a
+builder, with the scheduler, the review flow and the audio all working on it
+unchanged.
 
 `npm test` covers the romaji conversion in both directions, the answer matching,
 and the session flows. It also asserts two properties across the whole dataset:
@@ -207,7 +231,6 @@ multiple-choice question has exactly one correct option.
 ## Ideas for later
 
 - A full N5 vocabulary deck, including the kana-only words
-- Counters, dates and times, with their sound changes
 - Particle and conjugation drills
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond

@@ -139,6 +139,11 @@ await evaluate(`(() => {
     inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type', listening: 'type' },
     flow: 'mistakes', order: 'ordered',
   };
+  store.prefs.counters = {
+    groupIds: ['time'], excluded: [], modes: ['reading'],
+    inputModes: { reading: 'type', meaning: 'type', listening: 'type' },
+    flow: 'mistakes', order: 'ordered',
+  };
   store.prefs.kana = {
     scripts: ['hira'], groupIds: ['vowels','k','s','t','n','h','m','y','r','w'],
     modes: ['recognition'], flow: 'mistakes', order: 'ordered',
@@ -147,7 +152,7 @@ await evaluate(`(() => {
   return 'seeded';
 })()`);
 await goto(BASE);
-await shot('home', 800);
+await shot('home', 840);
 
 // ------------------------------------------------------- 2. kanji quiz
 
