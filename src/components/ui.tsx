@@ -22,6 +22,25 @@ export function SpeakerIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+/** known in green, still-being-learned in amber, the rest untouched. */
+export function MasteryBar({
+  known,
+  learning,
+  total,
+}: {
+  known: number;
+  learning: number;
+  total: number;
+}) {
+  const pct = (n: number) => (total ? (n / total) * 100 : 0);
+  return (
+    <div className="mastery-bar" title={`${known} known, ${learning} learning`}>
+      <span className="known" style={{ width: `${pct(known)}%` }} />
+      <span className="learning" style={{ width: `${pct(learning)}%` }} />
+    </div>
+  );
+}
+
 export function Panel({
   title,
   hint,
