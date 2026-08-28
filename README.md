@@ -1,8 +1,9 @@
 # 日本 JapanLearner
 
-A practice app for learning Japanese, covering N5 across six decks: the kana,
+A practice app for learning Japanese, covering N5 across seven decks: the kana,
 the kanji, the counters and dates that never behave, the core vocabulary, how
-verbs and adjectives conjugate, and which particle a sentence takes. It schedules your reviews, so
+verbs and adjectives conjugate, which particle a sentence takes, and finally
+reading whole sentences. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
 you can still pick exactly what to drill and how to be asked.
 
@@ -278,6 +279,28 @@ it cannot drift into justifying something else. `npm run check:data particles`
 then looks each one up in a sentence corpus — see below for how far that
 actually gets.
 
+## Reading
+
+Forty short sentences, and the first deck that asks you to use the others at
+once: the kanji, the vocabulary, the conjugated verbs and the particles
+together. Read the sentence, say what it means.
+
+![A reading card with the furigana shown](docs/screenshots/reading.png)
+
+Furigana start hidden, because reading the kanji is the point — one button
+brings them back when you are stuck, and they hide again on the next sentence.
+There is a listening mode too, where the sentence is only spoken.
+
+Sentences are stored as furigana segments rather than as text plus a reading,
+so the written form and the reading are derived from the same place and cannot
+drift apart. Tests hold the segments to it: a reading must be kana, furigana
+may only sit over kanji, no segment may be annotated with itself, and every
+kanji used must be taught somewhere else in the app.
+
+Answering is always multiple choice. Translating a whole sentence by typing
+cannot be graded fairly, and a drill that marks a correct answer wrong is worse
+than no drill.
+
 ## How a session runs
 
 Pick the shape of the session independently of what is in it:
@@ -359,7 +382,7 @@ due date into the scheduler.
 ## Project layout
 
 ```
-src/data/         the six datasets, the look-alike sets, and the study plan
+src/data/         the seven datasets, the look-alike sets, and the study plan
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
@@ -370,7 +393,8 @@ src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, progress, the six setup screens, quiz, results
+src/components/   home, progress, the seven setup screens, quiz, results
+src/components/DeckPicker  the picker every setup screen shares
 tests/            romaji, session-engine, scheduling and storage tests
 scripts/          screenshot capture, and the JMdict cross-check
 ```
@@ -389,8 +413,7 @@ multiple-choice question has exactly one correct option.
 
 ## Ideas for later
 
-- Sentence reading, with a furigana toggle
-- One shared picker component behind the six setup screens
+- An installable offline app, so it works without a connection
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond
 

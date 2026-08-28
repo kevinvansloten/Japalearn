@@ -14,6 +14,7 @@ import { COUNTER_GROUPS } from '../data/counters';
 import { KANA_GROUPS } from '../data/kana';
 import { CONJUGATION_GROUPS } from '../data/conjugation';
 import { PARTICLE_GROUPS } from '../data/particles';
+import { READING_GROUPS } from '../data/reading';
 import { WORD_GROUPS } from '../data/words';
 import { KANJI_GROUPS } from '../data/kanji';
 import {
@@ -22,10 +23,12 @@ import {
   buildKanjiCards,
   buildConjugationCards,
   buildParticleCards,
+  buildReadingCards,
   buildWordCards,
   type ConjugationConfig,
   type CounterConfig,
   type ParticleConfig,
+  type ReadingConfig,
   type KanaConfig,
   type KanjiConfig,
   type WordConfig,
@@ -43,6 +46,7 @@ export interface Decks {
   words: WordConfig;
   conjugation: ConjugationConfig;
   particles: ParticleConfig;
+  reading: ReadingConfig;
 }
 
 export interface ReviewPlan {
@@ -71,7 +75,7 @@ export function planReview(
   newAllowance: number,
   now = Date.now(),
 ): ReviewPlan {
-  const { kana, kanji, counters, words, conjugation, particles } = decks;
+  const { kana, kanji, counters, words, conjugation, particles, reading } = decks;
   // Everything askable in the modes currently enabled, ignoring group
   // selection, so a due item can always be built into a card.
   const everything = [
@@ -101,6 +105,11 @@ export function planReview(
       groupIds: PARTICLE_GROUPS.map((g) => g.id),
       excluded: [],
     }),
+    ...buildReadingCards({
+      ...reading,
+      groupIds: READING_GROUPS.map((g) => g.id),
+      excluded: [],
+    }),
   ];
   const index = indexByItem(everything);
 
@@ -113,6 +122,7 @@ export function planReview(
       ...buildWordCards(words),
       ...buildConjugationCards(conjugation),
       ...buildParticleCards(particles),
+      ...buildReadingCards(reading),
     ].map((c) => c.itemId),
   );
 

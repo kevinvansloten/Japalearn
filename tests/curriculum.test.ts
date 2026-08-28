@@ -5,6 +5,7 @@ import { ALL_KANA, KANA_GROUPS } from '../src/data/kana';
 import { ALL_KANJI, KANJI_GROUPS } from '../src/data/kanji';
 import { ALL_PARTICLE_SENTENCES, PARTICLE_GROUPS } from '../src/data/particles';
 import { ALL_WORDS, WORD_GROUPS } from '../src/data/words';
+import { ALL_READING_SENTENCES, READING_GROUPS, written } from '../src/data/reading';
 import { CONJUGATION_GROUPS } from '../src/data/conjugation';
 import type { Decks } from '../src/lib/review';
 import {
@@ -49,6 +50,7 @@ const decks: Decks = {
     flow: 'once', order: 'ordered',
   },
   particles: { groupIds: [], excluded: [], inputMode: 'choice', flow: 'once', order: 'ordered' },
+  reading: { groupIds: [], excluded: [], modes: ['meaning'], flow: 'once', order: 'ordered' },
 };
 
 // -------------------------------------------------------------- mastery
@@ -90,6 +92,7 @@ const groupsByDeck: Record<string, Set<string>> = {
   words: new Set(WORD_GROUPS.map((g) => g.id)),
   conjugation: new Set(CONJUGATION_GROUPS.map((g) => g.id)),
   particles: new Set(PARTICLE_GROUPS.map((g) => g.id)),
+  reading: new Set(READING_GROUPS.map((g) => g.id)),
 };
 const strayGroups: string[] = [];
 for (const stage of CURRICULUM) {
@@ -114,6 +117,7 @@ const everything = [
   ...ALL_WORDS.map((w) => `vocab:${w.word}`),
   ...[...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   ...ALL_PARTICLE_SENTENCES.map((s) => `particle:${s.text}`),
+  ...ALL_READING_SENTENCES.map((s) => `reading:${written(s)}`),
 ];
 const unplanned = everything.filter((id) => !planned.has(id));
 ok('the plan covers every item', unplanned.length === 0,

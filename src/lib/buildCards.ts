@@ -10,6 +10,12 @@ import {
   type ParticleSentence,
 } from '../data/particles';
 import {
+  ALL_READING_SENTENCES,
+  reading as sentenceReading,
+  written,
+  type ReadingSentence,
+} from '../data/reading';
+import {
   ADJECTIVE_FORM_LABEL,
   VERB_FORM_LABEL,
   conjugateAdjective,
@@ -775,4 +781,86 @@ export function buildParticleCards(config: ParticleConfig): Card[] {
       check: (given: string) => accepted.includes(given.trim()),
     };
   });
+}
+
+// ---------------------------------------------------------------- reading
+
+export type ReadingMode = 'meaning' | 'listening';
+
+export interface ReadingConfig {
+  groupIds: string[];
+  /** sentences explicitly switched off inside a selected group */
+  excluded: string[];
+  modes: ReadingMode[];
+  flow: Flow;
+  order: Order;
+}
+
+export const READING_MODE_LABEL: Record<ReadingMode, string> = {
+  meaning: 'Read it',
+  listening: 'Hear it',
+};
+
+export const READING_MODE_BLURB: Record<ReadingMode, string> = {
+  meaning: 'Read the sentence and pick what it means.',
+  listening: 'Hear the sentence and pick what it means.',
+};
+
+export function readingPool(config: ReadingConfig): ReadingSentence[] {
+  return ALL_READING_SENTENCES.filter(
+    (s) => config.groupIds.includes(s.groupId) && !config.excluded.includes(written(s)),
+  );
+}
+
+export function buildReadingCards(config: ReadingConfig): Card[] {
+  const pool = readingPool(config);
+  const cards: Card[] = [];
+  const englishPool = pool.map((s) => s.english);
+
+  for (const sentence of pool) {
+    const text = written(sentence);
+    const kana = sentenceReading(sentence);
+    const itemId = `reading:${text}`;
+    // Translating a whole sentence by typing cannot be graded fairly, so
+    // comprehension is always multiple choice.
+    const choices = pickChoices(sentence.english, englishPool);
+    const details = [kana, sentence.english];
+
+    if (config.modes.includes('meaning')) {
+      cards.push({
+        id: `reading-meaning-${text}`,
+        itemId,
+        question: 'What does this say?',
+        prompt: text,
+        promptScript: 'jp',
+        promptRuby: sentence.segments,
+        inputMode: 'choice',
+        speech: kana,
+        choices,
+        answer: sentence.english,
+        answerScript: 'latin',
+        details,
+        check: exact(sentence.english),
+      });
+    }
+
+    if (config.modes.includes('listening')) {
+      cards.push({
+        id: `reading-listening-${text}`,
+        itemId,
+        question: 'What did you hear?',
+        prompt: '',
+        promptScript: 'audio',
+        speech: kana,
+        inputMode: 'choice',
+        choices,
+        answer: sentence.english,
+        answerScript: 'latin',
+        details: [text, ...details],
+        check: exact(sentence.english),
+      });
+    }
+  }
+
+  return cards;
 }

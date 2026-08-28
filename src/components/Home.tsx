@@ -5,6 +5,7 @@ import { ALL_KANJI } from '../data/kanji';
 import { ALL_WORDS } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
+import { ALL_READING_SENTENCES, written } from '../data/reading';
 import { CURRICULUM } from '../data/curriculum';
 import type { Stage } from '../data/curriculum';
 import { stageNumber, stageProgress } from '../lib/curriculum';
@@ -21,6 +22,7 @@ interface Props {
   onWords: () => void;
   onConjugation: () => void;
   onParticles: () => void;
+  onReading: () => void;
   onProgress: () => void;
   /** the stage the learner is on, or null once the plan is finished */
   stage: Stage | null;
@@ -43,6 +45,7 @@ export function Home({
   onWords,
   onConjugation,
   onParticles,
+  onReading,
   onProgress,
   stage,
   onStartStage,
@@ -78,17 +81,18 @@ export function Home({
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
   const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
   const words = summarise(ALL_WORDS.map((w) => `vocab:${w.word}`));
+  const readingSummary = summarise(ALL_READING_SENTENCES.map((s) => `reading:${written(s)}`));
   const particles = summarise(ALL_PARTICLE_SENTENCES.map((s) => `particle:${s.text}`));
   const conjugation = summarise(
     [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   );
-  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen + particles.seen > 0;
+  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen + particles.seen + readingSummary.seen > 0;
 
   return (
     <div className="stack">
       <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
-        Six decks covering N5: the kana, the kanji, the counters that never behave, the core
-        vocabulary, how verbs and adjectives conjugate, and which particle a sentence takes. Review what is due, or pick a deck
+        Seven decks covering N5, from the kana up to reading whole sentences. Review what is
+        due, follow the plan, or pick a deck and drill exactly what you choose. Review what is due, or pick a deck
         and drill exactly what you choose.
       </p>
 
@@ -211,6 +215,16 @@ export function Home({
             {ALL_PARTICLE_SENTENCES.length} sentences with a gap — は, が, を, に, で and the rest.
           </p>
           <Progress summary={particles} unit="sentences" />
+        </button>
+
+        <button type="button" className="home-card" onClick={onReading}>
+          <span className="big">私はパンを</span>
+          <h2>Reading</h2>
+          <p>
+            {ALL_READING_SENTENCES.length} sentences that use the other decks together, with
+            furigana when you want them.
+          </p>
+          <Progress summary={readingSummary} unit="sentences" />
         </button>
       </div>
 
