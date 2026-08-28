@@ -1,5 +1,6 @@
 import { KANA_LOOKALIKES, KANJI_LOOKALIKES } from '../data/confusables';
 import { ALL_COUNTERS, type CounterItem } from '../data/counters';
+import { ALL_WORDS, hasKanji, type WordEntry } from '../data/words';
 import { ALL_KANA, type KanaEntry } from '../data/kana';
 import { ALL_KANJI, type KanjiEntry } from '../data/kanji';
 import { checkMeaning, checkReading, kanaToRomaji } from './romaji';
@@ -384,6 +385,153 @@ export function buildCounterCards(config: CounterConfig): Card[] {
         answerScript: 'jp',
         details: counterDetails(item),
         check: choice ? exact(item.form) : (given) => checkReading(given, accepted),
+      });
+    }
+  }
+
+  return cards;
+}
+
+// ------------------------------------------------------------- vocabulary
+
+export type WordMode = 'meaning' | 'reading' | 'recall' | 'listening';
+
+export interface WordConfig {
+  groupIds: string[];
+  /** words explicitly switched off inside an otherwise selected group */
+  excluded: string[];
+  modes: WordMode[];
+  inputModes: Record<WordMode, InputMode>;
+  flow: Flow;
+  order: Order;
+}
+
+export const WORD_MODE_LABEL: Record<WordMode, string> = {
+  meaning: 'Word → meaning',
+  reading: 'Word → reading',
+  recall: 'Meaning → word',
+  listening: 'Listening',
+};
+
+export const WORD_MODE_BLURB: Record<WordMode, string> = {
+  meaning: 'See 手紙, answer “letter”.',
+  reading: 'See 手紙, answer てがみ. Skipped for words already written in kana.',
+  recall: 'See “letter”, pick 手紙 out of four.',
+  listening: 'Hear てがみ, work out which word it was.',
+};
+
+export function wordPool(config: WordConfig): WordEntry[] {
+  return ALL_WORDS.filter(
+    (w) => config.groupIds.includes(w.groupId) && !config.excluded.includes(w.word),
+  );
+}
+
+const KIND_LABEL: Record<WordEntry['kind'], string> = {
+  noun: 'noun',
+  verb: 'verb',
+  adjective: 'adjective',
+  adverb: 'adverb',
+  expression: 'expression',
+  pronoun: 'pronoun',
+};
+
+const wordDetails = (entry: WordEntry): string[] => [
+  hasKanji(entry)
+    ? `${entry.word}（${entry.reading}）— ${entry.meanings.join(', ')}`
+    : `${entry.word} — ${entry.meanings.join(', ')}`,
+  KIND_LABEL[entry.kind],
+];
+
+export function buildWordCards(config: WordConfig): Card[] {
+  const pool = wordPool(config);
+  const cards: Card[] = [];
+
+  const meaningPool = pool.map((w) => w.meanings[0]);
+  const wordPoolText = pool.map((w) => w.word);
+  const readingPool = pool.filter(hasKanji).map((w) => w.reading);
+
+  for (const entry of pool) {
+    // The kanji deck already tracks its example words under this key, so a word
+    // learned there and here shares one schedule rather than being asked twice.
+    const itemId = `vocab:${entry.word}`;
+
+    if (config.modes.includes('meaning')) {
+      const choice = config.inputModes.meaning === 'choice';
+      cards.push({
+        id: `word-meaning-${entry.word}`,
+        itemId,
+        question: 'What does this mean?',
+        prompt: entry.word,
+        promptScript: 'jp',
+        inputMode: config.inputModes.meaning,
+        placeholder: 'meaning in English',
+        speech: entry.reading,
+        choices: choice ? pickChoices(entry.meanings[0], meaningPool) : undefined,
+        answer: entry.meanings.join(' / '),
+        answerScript: 'latin',
+        details: wordDetails(entry),
+        check: choice
+          ? exact(entry.meanings[0])
+          : (given) => checkMeaning(given, entry.meanings),
+      });
+    }
+
+    // Asking for the reading of a word already written in kana is not a question.
+    if (config.modes.includes('reading') && hasKanji(entry)) {
+      const choice = config.inputModes.reading === 'choice';
+      cards.push({
+        id: `word-reading-${entry.word}`,
+        itemId,
+        question: choice ? 'How is this read?' : 'Type the reading',
+        prompt: entry.word,
+        promptScript: 'jp',
+        promptNote: entry.meanings[0],
+        inputMode: config.inputModes.reading,
+        placeholder: 'romaji or kana',
+        speech: entry.reading,
+        choices: choice ? pickChoices(entry.reading, readingPool) : undefined,
+        answer: `${entry.reading}（${kanaToRomaji(entry.reading)}）`,
+        answerScript: 'jp',
+        details: wordDetails(entry),
+        check: choice ? exact(entry.reading) : (given) => checkReading(given, [entry.reading]),
+      });
+    }
+
+    if (config.modes.includes('recall')) {
+      const choice = config.inputModes.recall === 'choice';
+      cards.push({
+        id: `word-recall-${entry.word}`,
+        itemId,
+        question: choice ? 'Which word is this?' : 'Write the word (needs a Japanese IME)',
+        prompt: entry.meanings.join(' / '),
+        promptScript: 'latin',
+        inputMode: config.inputModes.recall,
+        placeholder: 'the word',
+        speech: entry.reading,
+        choices: choice ? pickChoices(entry.word, wordPoolText) : undefined,
+        answer: entry.word,
+        answerScript: 'jp',
+        details: wordDetails(entry),
+        check: exact(entry.word),
+      });
+    }
+
+    if (config.modes.includes('listening')) {
+      const choice = config.inputModes.listening === 'choice';
+      cards.push({
+        id: `word-listening-${entry.word}`,
+        itemId,
+        question: choice ? 'Which word did you hear?' : 'Write down what you hear',
+        prompt: '',
+        promptScript: 'audio',
+        speech: entry.reading,
+        inputMode: config.inputModes.listening,
+        placeholder: 'romaji or kana',
+        choices: choice ? pickChoices(entry.word, wordPoolText) : undefined,
+        answer: hasKanji(entry) ? `${entry.word}　${entry.reading}` : entry.word,
+        answerScript: 'jp',
+        details: wordDetails(entry),
+        check: choice ? exact(entry.word) : (given) => checkReading(given, [entry.reading]),
       });
     }
   }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KANA_GROUPS } from './data/kana';
-import type { CounterConfig, KanaConfig, KanjiConfig } from './lib/buildCards';
+import type { CounterConfig, KanaConfig, KanjiConfig, WordConfig } from './lib/buildCards';
 import type { Card, SessionOptions } from './lib/session';
 import { planReview } from './lib/review';
 import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
@@ -8,6 +8,7 @@ import { Home } from './components/Home';
 import { KanaSetup } from './components/KanaSetup';
 import { CounterSetup } from './components/CounterSetup';
 import { KanjiSetup } from './components/KanjiSetup';
+import { WordSetup } from './components/WordSetup';
 import { Quiz } from './components/Quiz';
 
 const DEFAULT_KANA: KanaConfig = {
@@ -36,7 +37,16 @@ const DEFAULT_COUNTERS: CounterConfig = {
   order: 'shuffled',
 };
 
-type Screen = 'home' | 'kana' | 'kanji' | 'counters' | 'quiz';
+const DEFAULT_WORDS: WordConfig = {
+  groupIds: ['pointing'],
+  excluded: [],
+  modes: ['meaning'],
+  inputModes: { meaning: 'type', reading: 'type', recall: 'choice', listening: 'type' },
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
+type Screen = 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -44,7 +54,7 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters';
+  back?: 'kana' | 'kanji' | 'counters' | 'words';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -77,6 +87,16 @@ export default function App() {
     };
   });
 
+  const [wordConfig, setWordConfig] = useState<WordConfig>(() => {
+    const saved = loadPref<Partial<WordConfig>>('words', {});
+    return {
+      ...DEFAULT_WORDS,
+      ...saved,
+      inputModes: { ...DEFAULT_WORDS.inputModes, ...saved.inputModes },
+    };
+  });
+
+  useEffect(() => savePref('words', wordConfig), [wordConfig]);
   useEffect(() => savePref('counters', counterConfig), [counterConfig]);
   useEffect(() => savePref('kana', kanaConfig), [kanaConfig]);
   useEffect(() => savePref('kanji', kanjiConfig), [kanjiConfig]);
@@ -85,7 +105,7 @@ export default function App() {
     title: string,
     cards: Card[],
     options: SessionOptions,
-    extra: { back?: 'kana' | 'kanji' | 'counters'; scheduled?: boolean } = {},
+    extra: { back?: 'kana' | 'kanji' | 'counters' | 'words'; scheduled?: boolean } = {},
   ) => {
     setRun((previous) => ({ id: (previous?.id ?? 0) + 1, title, cards, options, ...extra }));
     setScreen('quiz');
@@ -94,8 +114,13 @@ export default function App() {
   // Recomputed whenever we land back on the home screen, so finishing a review
   // immediately reflects the new schedule.
   const plan = useMemo(
-    () => planReview(kanaConfig, kanjiConfig, counterConfig, loadItemStats(), newAllowanceToday()),
-    [kanaConfig, kanjiConfig, counterConfig, version],
+    () =>
+      planReview(
+        { kana: kanaConfig, kanji: kanjiConfig, counters: counterConfig, words: wordConfig },
+        loadItemStats(),
+        newAllowanceToday(),
+      ),
+    [kanaConfig, kanjiConfig, counterConfig, wordConfig, version],
   );
 
   const goHome = () => {
@@ -133,6 +158,7 @@ export default function App() {
           onKana={() => setScreen('kana')}
           onKanji={() => setScreen('kanji')}
           onCounters={() => setScreen('counters')}
+          onWords={() => setScreen('words')}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}
@@ -180,6 +206,22 @@ export default function App() {
               cards,
               { flow: counterConfig.flow, order: counterConfig.order },
               { back: 'counters' },
+            )
+          }
+        />
+      )}
+
+      {screen === 'words' && (
+        <WordSetup
+          config={wordConfig}
+          onChange={setWordConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              'Vocabulary — N5',
+              cards,
+              { flow: wordConfig.flow, order: wordConfig.order },
+              { back: 'words' },
             )
           }
         />
