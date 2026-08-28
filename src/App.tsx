@@ -5,6 +5,7 @@ import type {
   CounterConfig,
   KanaConfig,
   ParticleConfig,
+  ReadingConfig,
   KanjiConfig,
   WordConfig,
 } from './lib/buildCards';
@@ -20,6 +21,7 @@ import { WordSetup } from './components/WordSetup';
 import { ConjugationSetup } from './components/ConjugationSetup';
 import { ParticleSetup } from './components/ParticleSetup';
 import { Progress } from './components/Progress';
+import { ReadingSetup } from './components/ReadingSetup';
 import { Quiz } from './components/Quiz';
 
 const DEFAULT_KANA: KanaConfig = {
@@ -76,9 +78,17 @@ const DEFAULT_PARTICLES: ParticleConfig = {
   order: 'shuffled',
 };
 
+const DEFAULT_READING: ReadingConfig = {
+  groupIds: ['statements'],
+  excluded: [],
+  modes: ['meaning'],
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
 type Screen =
   | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
-  | 'progress' | 'quiz';
+  | 'reading' | 'progress' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -86,7 +96,7 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
+  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'reading';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -142,6 +152,12 @@ export default function App() {
     ...loadPref<Partial<ParticleConfig>>('particles', {}),
   }));
 
+  const [readingConfig, setReadingConfig] = useState<ReadingConfig>(() => ({
+    ...DEFAULT_READING,
+    ...loadPref<Partial<ReadingConfig>>('reading', {}),
+  }));
+
+  useEffect(() => savePref('reading', readingConfig), [readingConfig]);
   useEffect(() => savePref('particles', particleConfig), [particleConfig]);
   useEffect(() => savePref('conjugation', conjugationConfig), [conjugationConfig]);
   useEffect(() => savePref('words', wordConfig), [wordConfig]);
@@ -154,7 +170,7 @@ export default function App() {
     cards: Card[],
     options: SessionOptions,
     extra: {
-      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
+      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'reading';
       scheduled?: boolean;
     } = {},
   ) => {
@@ -169,6 +185,7 @@ export default function App() {
     words: wordConfig,
     conjugation: conjugationConfig,
     particles: particleConfig,
+    reading: readingConfig,
   };
 
   // The stage to be getting on with, recomputed alongside the review plan.
@@ -186,6 +203,7 @@ export default function App() {
       wordConfig,
       conjugationConfig,
       particleConfig,
+      readingConfig,
       version,
     ],
   );
@@ -228,6 +246,7 @@ export default function App() {
           onWords={() => setScreen('words')}
           onConjugation={() => setScreen('conjugation')}
           onParticles={() => setScreen('particles')}
+          onReading={() => setScreen('reading')}
           onProgress={() => setScreen('progress')}
           stage={stage}
           onStartStage={() => {
@@ -332,6 +351,22 @@ export default function App() {
               cards,
               { flow: particleConfig.flow, order: particleConfig.order },
               { back: 'particles' },
+            )
+          }
+        />
+      )}
+
+      {screen === 'reading' && (
+        <ReadingSetup
+          config={readingConfig}
+          onChange={setReadingConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              'Reading',
+              cards,
+              { flow: readingConfig.flow, order: readingConfig.order },
+              { back: 'reading' },
             )
           }
         />

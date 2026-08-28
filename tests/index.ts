@@ -4,6 +4,7 @@ import './counters.test';
 import './words.test';
 import './conjugate.test';
 import './particles.test';
+import './reading.test';
 import './curriculum.test';
 import './schedule.test';
 import './storage.test';

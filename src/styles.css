@@ -464,6 +464,21 @@ input {
   letter-spacing: 0.04em;
 }
 
+/* A whole sentence needs to wrap and sit much smaller than a single glyph. */
+.glyph.sentence {
+  font-size: 30px;
+  line-height: 2.1;
+  margin: 4px 0 10px;
+  letter-spacing: 0.02em;
+}
+
+.glyph.sentence rt {
+  font-size: 0.42em;
+  color: var(--text-dim);
+  /* Keeps the line from jumping when the reading appears. */
+  line-height: 1.1;
+}
+
 .glyph.latin {
   font-family: inherit;
   font-size: 44px;
@@ -896,6 +911,11 @@ input {
 
   .glyph.latin {
     font-size: 32px;
+  }
+
+  .glyph.sentence {
+    font-size: 23px;
+    line-height: 2;
   }
 
   .card {

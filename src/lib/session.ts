@@ -11,6 +11,12 @@ export interface Card {
   promptScript: 'jp' | 'latin' | 'audio';
   /** small line under the prompt, e.g. a hint about which reading */
   promptNote?: string;
+  /**
+   * The prompt broken into furigana segments, for prompts worth reading rather
+   * than recognising. When present the quiz can show the reading over the
+   * kanji on request.
+   */
+  promptRuby?: [written: string, reading?: string][];
   inputMode: InputMode;
   /** options when inputMode is 'choice' */
   choices?: string[];

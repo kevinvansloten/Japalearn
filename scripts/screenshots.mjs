@@ -152,6 +152,10 @@ await evaluate(`(() => {
     inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type', listening: 'type' },
     flow: 'mistakes', order: 'ordered',
   };
+  store.prefs.reading = {
+    groupIds: ['statements'], excluded: [], modes: ['meaning'],
+    flow: 'mistakes', order: 'ordered',
+  };
   store.prefs.particles = {
     groupIds: ['wo'], excluded: [], inputMode: 'choice',
     flow: 'mistakes', order: 'shuffled',
@@ -180,7 +184,7 @@ await evaluate(`(() => {
   return 'seeded';
 })()`);
 await goto(BASE);
-await shot('home', 1300);
+await shot('home', 1480);
 
 // ------------------------------------------------------- 2. kanji quiz
 
@@ -206,6 +210,14 @@ await click('Kanji — JLPT N5');
 await evaluate(`window.scrollTo(0, 150)`);
 await sleep(300);
 await shot('setup', 820);
+
+// -------------------------------------------------------- 5. reading
+
+await goto(BASE);
+await click('Reading');
+await click('Start —');
+await click('Show furigana');
+await shot('reading', 660);
 
 ws.close();
 edge.kill();
