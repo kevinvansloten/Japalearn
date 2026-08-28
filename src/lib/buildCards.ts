@@ -3,6 +3,13 @@ import { ALL_COUNTERS, type CounterItem } from '../data/counters';
 import { ALL_WORDS, hasKanji, type WordEntry } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import {
+  ALL_PARTICLE_SENTENCES,
+  PARTICLES,
+  acceptedFor,
+  filled,
+  type ParticleSentence,
+} from '../data/particles';
+import {
   ADJECTIVE_FORM_LABEL,
   VERB_FORM_LABEL,
   conjugateAdjective,
@@ -707,4 +714,57 @@ export function buildConjugationCards(config: ConjugationConfig): Card[] {
   }
 
   return cards;
+}
+
+// -------------------------------------------------------------- particles
+
+export interface ParticleConfig {
+  groupIds: string[];
+  /** sentences explicitly switched off inside a selected group */
+  excluded: string[];
+  inputMode: InputMode;
+  flow: Flow;
+  order: Order;
+}
+
+export function particlePool(config: ParticleConfig): ParticleSentence[] {
+  return ALL_PARTICLE_SENTENCES.filter(
+    (s) => config.groupIds.includes(s.groupId) && !config.excluded.includes(s.text),
+  );
+}
+
+export function buildParticleCards(config: ParticleConfig): Card[] {
+  return particlePool(config).map((sentence) => {
+    const accepted = acceptedFor(sentence);
+    const choice = config.inputMode === 'choice';
+
+    // Distractors must exclude every particle that would also be correct, or
+    // the question would have more than one right answer.
+    const distractorPool = PARTICLES.filter((p) => !accepted.includes(p));
+
+    const alsoNote = sentence.alsoAccepted?.length
+      ? `${sentence.alsoAccepted.join('、')} also works here.`
+      : null;
+
+    return {
+      id: `particle-${sentence.text}`,
+      itemId: `particle:${sentence.text}`,
+      question: 'Which particle belongs in the gap?',
+      prompt: sentence.text,
+      promptScript: 'jp',
+      promptNote: sentence.english,
+      inputMode: config.inputMode,
+      placeholder: 'the particle',
+      speech: filled(sentence),
+      choices: choice
+        ? shuffle([sentence.answer, ...shuffle(distractorPool).slice(0, CHOICE_COUNT - 1)])
+        : undefined,
+      answer: accepted.join(' / '),
+      answerScript: 'jp',
+      details: [filled(sentence), sentence.why, ...(alsoNote ? [alsoNote] : [])],
+      // Typed answers accept kana directly; particles are too short for romaji
+      // conversion to be worth the ambiguity.
+      check: (given: string) => accepted.includes(given.trim()),
+    };
+  });
 }

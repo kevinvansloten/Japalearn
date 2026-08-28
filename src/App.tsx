@@ -4,6 +4,7 @@ import type {
   ConjugationConfig,
   CounterConfig,
   KanaConfig,
+  ParticleConfig,
   KanjiConfig,
   WordConfig,
 } from './lib/buildCards';
@@ -16,6 +17,7 @@ import { CounterSetup } from './components/CounterSetup';
 import { KanjiSetup } from './components/KanjiSetup';
 import { WordSetup } from './components/WordSetup';
 import { ConjugationSetup } from './components/ConjugationSetup';
+import { ParticleSetup } from './components/ParticleSetup';
 import { Quiz } from './components/Quiz';
 
 const DEFAULT_KANA: KanaConfig = {
@@ -64,7 +66,16 @@ const DEFAULT_CONJUGATION: ConjugationConfig = {
   order: 'shuffled',
 };
 
-type Screen = 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'quiz';
+const DEFAULT_PARTICLES: ParticleConfig = {
+  groupIds: ['wo'],
+  excluded: [],
+  inputMode: 'choice',
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
+type Screen =
+  | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -72,7 +83,7 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation';
+  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -123,6 +134,12 @@ export default function App() {
     };
   });
 
+  const [particleConfig, setParticleConfig] = useState<ParticleConfig>(() => ({
+    ...DEFAULT_PARTICLES,
+    ...loadPref<Partial<ParticleConfig>>('particles', {}),
+  }));
+
+  useEffect(() => savePref('particles', particleConfig), [particleConfig]);
   useEffect(() => savePref('conjugation', conjugationConfig), [conjugationConfig]);
   useEffect(() => savePref('words', wordConfig), [wordConfig]);
   useEffect(() => savePref('counters', counterConfig), [counterConfig]);
@@ -134,7 +151,7 @@ export default function App() {
     cards: Card[],
     options: SessionOptions,
     extra: {
-      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation';
+      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
       scheduled?: boolean;
     } = {},
   ) => {
@@ -153,11 +170,20 @@ export default function App() {
           counters: counterConfig,
           words: wordConfig,
           conjugation: conjugationConfig,
+          particles: particleConfig,
         },
         loadItemStats(),
         newAllowanceToday(),
       ),
-    [kanaConfig, kanjiConfig, counterConfig, wordConfig, conjugationConfig, version],
+    [
+      kanaConfig,
+      kanjiConfig,
+      counterConfig,
+      wordConfig,
+      conjugationConfig,
+      particleConfig,
+      version,
+    ],
   );
 
   const goHome = () => {
@@ -197,6 +223,7 @@ export default function App() {
           onCounters={() => setScreen('counters')}
           onWords={() => setScreen('words')}
           onConjugation={() => setScreen('conjugation')}
+          onParticles={() => setScreen('particles')}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}
@@ -276,6 +303,22 @@ export default function App() {
               cards,
               { flow: conjugationConfig.flow, order: conjugationConfig.order },
               { back: 'conjugation' },
+            )
+          }
+        />
+      )}
+
+      {screen === 'particles' && (
+        <ParticleSetup
+          config={particleConfig}
+          onChange={setParticleConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              'Particles',
+              cards,
+              { flow: particleConfig.flow, order: particleConfig.order },
+              { back: 'particles' },
             )
           }
         />

@@ -4,6 +4,7 @@ import type {
   ConjugationConfig,
   CounterConfig,
   KanaConfig,
+  ParticleConfig,
   KanjiConfig,
   WordConfig,
 } from '../src/lib/buildCards';
@@ -112,7 +113,15 @@ const conjugation: ConjugationConfig = {
   order: 'ordered',
 };
 
-const decks: Decks = { kana, kanji, counters, words, conjugation };
+const particles: ParticleConfig = {
+  groupIds: [],
+  excluded: [],
+  inputMode: 'choice',
+  flow: 'once',
+  order: 'ordered',
+};
+
+const decks: Decks = { kana, kanji, counters, words, conjugation, particles };
 
 const empty = planReview(decks, {}, 5, NOW);
 eq('a fresh account introduces up to the allowance', empty.cards.length, 5);

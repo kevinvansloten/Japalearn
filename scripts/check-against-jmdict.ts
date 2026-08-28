@@ -5,6 +5,7 @@
  *   npm run check:data counters   # counters, dates and times
  *   npm run check:data kanjivocab # the kanji deck's example words
  *   npm run check:data verbs      # conjugation classes, against the POS tags
+ *   npm run check:data particles  # particle collocations, against a sentence corpus
  *
  * This only ever reads. Nothing fetched here is written into the repository,
  * so the CC-BY-SA question that kept JMdict out of the data files does not
@@ -26,6 +27,7 @@ import { ALL_COUNTERS } from '../src/data/counters';
 import { ALL_KANJI } from '../src/data/kanji';
 import { ALL_WORDS } from '../src/data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../src/data/conjugation';
+import { ALL_PARTICLE_SENTENCES } from '../src/data/particles';
 
 const CACHE = process.argv[3] ?? `node_modules/.cache/jisho-${process.argv[2] ?? 'words'}.json`;
 const WHICH = process.argv[2] ?? 'words';
@@ -117,6 +119,82 @@ const items: Item[] =
  * reading but the class, and JMdict states it outright in parts_of_speech.
  * Get this wrong and every form the rules derive from it is wrong too.
  */
+/**
+ * Particles cannot be settled by a dictionary, so this compares the sentence
+ * against a corpus instead: it counts how often the collocation appears with
+ * the marked particle, and with each rival, and flags any sentence where a
+ * rival is better attested.
+ *
+ * Attestation alone proves little — パンで食べ has hits too — so only the
+ * comparison is meaningful, and even then it is a prompt to look again rather
+ * than a verdict.
+ */
+/**
+ * Particles cannot be settled by a dictionary, so this asks a sentence corpus
+ * whether the collocation is attested verbatim.
+ *
+ * The corpus's own result count is useless here: its search is tokenised, so
+ * 手紙が書きます — which is not Japanese — reports MORE hits than 手紙を書きます.
+ * What separates them is whether the returned sentences actually contain the
+ * string: the correct collocation appears in several, the wrong one in none.
+ * So this fetches results and counts exact occurrences itself.
+ *
+ * A long collocation may legitimately never appear verbatim, so zero hits is a
+ * prompt to look again rather than a verdict.
+ */
+if (WHICH === 'particles') {
+  const exactHits = async (phrase: string): Promise<number> => {
+    const cached = cache[phrase] as unknown as { exact: number } | undefined;
+    if (cached && typeof cached.exact === 'number') return cached.exact;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(
+          `https://tatoeba.org/en/api_v0/search?from=jpn&query=${encodeURIComponent(phrase)}&limit=30`,
+          { headers: { 'User-Agent': 'JapanLearner dataset check (one-off)' } },
+        );
+        if (res.ok) {
+          const json = (await res.json()) as { results?: { text: string }[] };
+          const exact = (json.results ?? []).filter((r) => r.text.includes(phrase)).length;
+          cache[phrase] = { exact } as never;
+          await sleep(PAUSE_MS);
+          return exact;
+        }
+      } catch {
+        /* retry */
+      }
+      await sleep(2000 * (attempt + 1));
+    }
+    throw new Error(`corpus lookup failed for ${phrase}`);
+  };
+
+  const attested: string[] = [];
+  const notFound: string[] = [];
+  let n = 0;
+
+  for (const sentence of ALL_PARTICLE_SENTENCES) {
+    const hits = await exactHits(sentence.collocation);
+    if (hits > 0) attested.push(`${sentence.collocation} — ${hits}`);
+    else notFound.push(`${sentence.collocation}  (${sentence.text} → ${sentence.answer})`);
+
+    n += 1;
+    if (n % 10 === 0) {
+      process.stderr.write(`  ...${n}/${ALL_PARTICLE_SENTENCES.length}
+`);
+      writeFileSync(CACHE, JSON.stringify(cache));
+    }
+  }
+
+  writeFileSync(CACHE, JSON.stringify(cache));
+  console.log(`
+Checked ${ALL_PARTICLE_SENTENCES.length} particle collocations against the corpus.`);
+  console.log(`
+Attested verbatim: ${attested.length}/${ALL_PARTICLE_SENTENCES.length}`);
+  console.log(`
+### Not found verbatim — worth a second look (${notFound.length})`);
+  for (const line of notFound) console.log(`  ${line}`);
+  process.exit(0);
+}
+
 if (WHICH === 'verbs') {
   const wrong: string[] = [];
   const unknown: string[] = [];

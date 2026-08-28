@@ -1,8 +1,8 @@
 # 日本 JapanLearner
 
-A practice app for learning Japanese, covering N5 across five decks: the kana,
-the kanji, the counters and dates that never behave, the core vocabulary, and
-how verbs and adjectives conjugate. It schedules your reviews, so
+A practice app for learning Japanese, covering N5 across six decks: the kana,
+the kanji, the counters and dates that never behave, the core vocabulary, how
+verbs and adjectives conjugate, and which particle a sentence takes. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
 you can still pick exactly what to drill and how to be asked.
 
@@ -179,6 +179,7 @@ npm run check:data            # the vocabulary deck
 npm run check:data counters   # counters, dates and times
 npm run check:data kanjivocab # the kanji deck's example words
 npm run check:data verbs      # conjugation classes, against the POS tags
+npm run check:data particles  # particle choices, against a sentence corpus
 ```
 
 This only ever reads. Nothing fetched is written into the repository, so the
@@ -189,7 +190,24 @@ Not every finding is a bug. A form the dictionary does not list is usually
 compositional (七台, 六千) and simply unverifiable this way; an uncorroborated
 meaning is often just a simpler learner gloss. A **reading that disagrees** is
 the one to take seriously. At the last run there were none, across 553
-dictionary-backed entries.
+dictionary-backed entries, and every conjugation class the dictionary states
+agreed too.
+
+Particles work differently, and the first attempt at checking them was wrong.
+A sentence corpus reports a *count* for a search, but its search is tokenised:
+手紙が書きます, which is not Japanese, reports more hits than 手紙を書きます.
+Comparing those counts ranks the wrong particle first.
+
+What does work is ignoring the count and reading the sentences the corpus
+returns, then checking whether they literally contain the collocation. There
+the separation is clean — 手紙を書きます appears in seven of them, 手紙が書きます
+in none.
+
+That gives a check with a known and fairly narrow reach. It corroborated 29 of
+68 collocations verbatim. The other 39 are phrases the corpus simply does not
+contain: spot-checking them shows the rival particle scores zero as well, so
+their absence says nothing either way. It can catch a wrong particle when the
+phrase is present, and is silent otherwise.
 
 ## Conjugation
 
@@ -213,6 +231,34 @@ That leaves the class as the only fallible input, and misfiling one verb would
 make every one of its forms wrong. So `npm run check:data verbs` checks each
 one against the dictionary's own part-of-speech tag, and the rules themselves
 are pinned by a table of about sixty known conjugations.
+
+## Particles
+
+Sixty-odd sentences with a gap in them, grouped by what the particle is doing —
+which is what actually decides the answer.
+
+| Group | What it covers |
+| --- | --- |
+| を | The direct object: パン＿食べます |
+| に | Destination, clock times, and where something exists |
+| で | Where an action happens, and what it is done with |
+| が | Existence, 好き and 分かる, and anything after a question word |
+| と, の, も | With, whose, and "too" |
+| から, まで | From and until, in time and in space |
+
+Particles are the one thing here no dictionary can settle: nothing states
+whether a sentence takes に or で. So the deck is honest about two things.
+
+**Sentences that take more than one particle say so.** 学校に行きます and
+学校へ行きます are both right, so both are accepted when typing, and multiple
+choice never offers two correct options at once — the reveal then tells you
+the other one also works.
+
+**Every sentence carries the collocation that justifies its answer**, and a
+test asserts that collocation really is a fragment of the filled sentence, so
+it cannot drift into justifying something else. `npm run check:data particles`
+then looks each one up in a sentence corpus — see below for how far that
+actually gets.
 
 ## How a session runs
 
@@ -304,7 +350,7 @@ src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, the five setup screens, quiz, results
+src/components/   home, the six setup screens, quiz, results
 tests/            romaji, session-engine, scheduling and storage tests
 scripts/          screenshot capture, and the JMdict cross-check
 ```
@@ -323,7 +369,7 @@ multiple-choice question has exactly one correct option.
 
 ## Ideas for later
 
-- Particle drills, and sentences built from them
+- Sentence reading, with a furigana toggle
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond
 

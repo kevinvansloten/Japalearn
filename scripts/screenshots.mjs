@@ -139,6 +139,10 @@ await evaluate(`(() => {
     inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type', listening: 'type' },
     flow: 'mistakes', order: 'ordered',
   };
+  store.prefs.particles = {
+    groupIds: ['wo'], excluded: [], inputMode: 'choice',
+    flow: 'mistakes', order: 'shuffled',
+  };
   store.prefs.conjugation = {
     groupIds: ['godan'], excluded: [], verbForms: ['masu', 'te'],
     adjectiveForms: ['negative', 'past'], modes: ['produce'],
@@ -163,7 +167,7 @@ await evaluate(`(() => {
   return 'seeded';
 })()`);
 await goto(BASE);
-await shot('home', 1120);
+await shot('home', 1300);
 
 // ------------------------------------------------------- 2. kanji quiz
 
