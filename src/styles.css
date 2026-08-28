@@ -702,6 +702,129 @@ input {
 
 /* --------------------------------------------------------------- home */
 
+.guide-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+
+.guide-panel h2 {
+  margin: 2px 0 4px;
+  font-size: 18px;
+}
+
+.guide-panel p {
+  margin: 0;
+}
+
+.deck-row {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.deck-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.mastery-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.mastery-bar .known {
+  background: var(--good);
+}
+
+.mastery-bar .learning {
+  background: #e0b341;
+}
+
+.forecast {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.forecast-day {
+  flex: 1;
+  text-align: center;
+}
+
+.forecast-bar {
+  height: 72px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--bg-sunken);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.forecast-bar span {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 6px 6px 0 0;
+  min-height: 2px;
+}
+
+.stage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+
+.stage-row:first-child {
+  border-top: 0;
+}
+
+.stage-row .tick {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: transparent;
+}
+
+.stage-row[data-complete='true'] .tick {
+  background: var(--good);
+  border-color: var(--good);
+  color: #0e1014;
+}
+
+.stage-row .body {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+}
+
+.stage-row[data-complete='true'] .title {
+  color: var(--text-dim);
+}
+
 .review-panel {
   display: flex;
   align-items: center;
@@ -846,7 +969,12 @@ input {
     padding: 11px 18px;
   }
 
-  .review-panel {
+  .review-panel,
+  .guide-panel {
     padding: 16px;
+  }
+
+  .forecast {
+    gap: 5px;
   }
 }

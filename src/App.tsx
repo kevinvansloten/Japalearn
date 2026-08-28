@@ -9,7 +9,8 @@ import type {
   WordConfig,
 } from './lib/buildCards';
 import type { Card, SessionOptions } from './lib/session';
-import { planReview } from './lib/review';
+import { planReview, type Decks } from './lib/review';
+import { buildStageCards, currentStage } from './lib/curriculum';
 import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
 import { Home } from './components/Home';
 import { KanaSetup } from './components/KanaSetup';
@@ -18,6 +19,7 @@ import { KanjiSetup } from './components/KanjiSetup';
 import { WordSetup } from './components/WordSetup';
 import { ConjugationSetup } from './components/ConjugationSetup';
 import { ParticleSetup } from './components/ParticleSetup';
+import { Progress } from './components/Progress';
 import { Quiz } from './components/Quiz';
 
 const DEFAULT_KANA: KanaConfig = {
@@ -75,7 +77,8 @@ const DEFAULT_PARTICLES: ParticleConfig = {
 };
 
 type Screen =
-  | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'quiz';
+  | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
+  | 'progress' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -159,22 +162,23 @@ export default function App() {
     setScreen('quiz');
   };
 
+  const decks: Decks = {
+    kana: kanaConfig,
+    kanji: kanjiConfig,
+    counters: counterConfig,
+    words: wordConfig,
+    conjugation: conjugationConfig,
+    particles: particleConfig,
+  };
+
+  // The stage to be getting on with, recomputed alongside the review plan.
+  const stage = useMemo(() => currentStage(loadItemStats()), [version]);
+
   // Recomputed whenever we land back on the home screen, so finishing a review
   // immediately reflects the new schedule.
   const plan = useMemo(
     () =>
-      planReview(
-        {
-          kana: kanaConfig,
-          kanji: kanjiConfig,
-          counters: counterConfig,
-          words: wordConfig,
-          conjugation: conjugationConfig,
-          particles: particleConfig,
-        },
-        loadItemStats(),
-        newAllowanceToday(),
-      ),
+      planReview(decks, loadItemStats(), newAllowanceToday()),
     [
       kanaConfig,
       kanjiConfig,
@@ -224,6 +228,15 @@ export default function App() {
           onWords={() => setScreen('words')}
           onConjugation={() => setScreen('conjugation')}
           onParticles={() => setScreen('particles')}
+          onProgress={() => setScreen('progress')}
+          stage={stage}
+          onStartStage={() => {
+            if (!stage) return;
+            start(stage.title, buildStageCards(stage, decks), {
+              flow: 'mistakes',
+              order: 'shuffled',
+            });
+          }}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}
@@ -323,6 +336,8 @@ export default function App() {
           }
         />
       )}
+
+      {screen === 'progress' && <Progress key={version} onHome={goHome} />}
 
       {screen === 'quiz' && run && (
         <Quiz

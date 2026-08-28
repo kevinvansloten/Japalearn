@@ -128,7 +128,7 @@ eq('a fresh account introduces up to the allowance', empty.cards.length, 5);
 eq('all of them are new', empty.fresh, 5);
 eq('none are due', empty.due, 0);
 ok('new cards come from the selection',
-  empty.cards.every((c) => c.itemId.startsWith('kana:vowels-') || c.itemId.startsWith('kanji:')));
+  empty.cards.every((c) => c.itemId.startsWith('kana:hira:') || c.itemId.startsWith('kanji:')));
 
 eq('a zero allowance introduces nothing', planReview(decks, {}, 0, NOW).cards.length, 0);
 

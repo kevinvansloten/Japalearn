@@ -5,15 +5,12 @@ import { ALL_KANJI } from '../data/kanji';
 import { ALL_WORDS } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
+import { CURRICULUM } from '../data/curriculum';
+import type { Stage } from '../data/curriculum';
+import { stageNumber, stageProgress } from '../lib/curriculum';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
-import {
-  exportProgress,
-  importProgress,
-  itemAccuracy,
-  loadItemStats,
-  resetProgress,
-} from '../lib/storage';
+import { exportProgress, importProgress, loadItemStats, resetProgress } from '../lib/storage';
 
 interface Props {
   plan: ReviewPlan;
@@ -24,6 +21,10 @@ interface Props {
   onWords: () => void;
   onConjugation: () => void;
   onParticles: () => void;
+  onProgress: () => void;
+  /** the stage the learner is on, or null once the plan is finished */
+  stage: Stage | null;
+  onStartStage: () => void;
   onReset: () => void;
 }
 
@@ -42,6 +43,9 @@ export function Home({
   onWords,
   onConjugation,
   onParticles,
+  onProgress,
+  stage,
+  onStartStage,
   onReset,
 }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -68,7 +72,9 @@ export function Home({
     };
   };
 
-  const kana = summarise(ALL_KANA.map((k) => `kana:${k.id}`));
+  const kana = summarise(
+    ALL_KANA.flatMap((k) => [`kana:hira:${k.id}`, `kana:kata:${k.id}`]),
+  );
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
   const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
   const words = summarise(ALL_WORDS.map((w) => `vocab:${w.word}`));
@@ -78,13 +84,6 @@ export function Home({
   );
   const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen + particles.seen > 0;
 
-  const weakest = useMemo(() => {
-    return ALL_KANJI.map((k) => ({ char: k.char, meaning: k.meanings[0], acc: itemAccuracy(stats[`kanji:${k.char}`]) }))
-      .filter((k): k is { char: string; meaning: string; acc: number } => k.acc !== null && k.acc < 70)
-      .sort((a, b) => a.acc - b.acc)
-      .slice(0, 12);
-  }, [stats]);
-
   return (
     <div className="stack">
       <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
@@ -92,6 +91,40 @@ export function Home({
         vocabulary, how verbs and adjectives conjugate, and which particle a sentence takes. Review what is due, or pick a deck
         and drill exactly what you choose.
       </p>
+
+      <section className="guide-panel">
+        <div>
+          {stage ? (
+            <>
+              <div className="faint">
+                Step {stageNumber(stage)} of {CURRICULUM.length}
+              </div>
+              <h2>{stage.title}</h2>
+              <p className="hint">{stage.goal}</p>
+              <p className="faint">
+                {stageProgress(stage, stats).known} of {stageProgress(stage, stats).total} known
+              </p>
+            </>
+          ) : (
+            <>
+              <h2>You have been through the whole plan</h2>
+              <p className="hint">
+                Keep reviewing, or pick any deck and drill whatever you like.
+              </p>
+            </>
+          )}
+        </div>
+        <div className="row">
+          <button type="button" className="btn ghost" onClick={onProgress}>
+            See progress
+          </button>
+          {stage && (
+            <button type="button" className="btn big" onClick={onStartStage}>
+              Study this
+            </button>
+          )}
+        </div>
+      </section>
 
       <section className="review-panel" data-ready={plan.cards.length > 0}>
         <div>
@@ -180,23 +213,6 @@ export function Home({
           <Progress summary={particles} unit="sentences" />
         </button>
       </div>
-
-      {weakest.length > 0 && (
-        <section className="panel">
-          <h2>Giving you the most trouble</h2>
-          <p className="hint">Lowest lifetime accuracy across all your sessions.</p>
-          <div className="missed-list">
-            {weakest.map((k) => (
-              <div className="missed-item" key={k.char}>
-                <span className="g">{k.char}</span>
-                <span className="a">
-                  {k.meaning} · {k.acc}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <div className="row between">
         <div className="row">

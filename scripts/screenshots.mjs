@@ -120,6 +120,13 @@ await evaluate(`(() => {
                  '分': [3,4], '半': [5,1], '今': [8,1], '間': [2,5], '毎': [4,2], '週': [3,3] };
   const DAY = 24 * 60 * 60 * 1000;
   const now = Date.now();
+  const KANA_BY_ROW = {
+    vowels: ['あ','い','う','え','お'], k: ['か','き','く','け','こ'],
+    s: ['さ','し','す','せ','そ'], t: ['た','ち','つ','て','と'],
+    n: ['な','に','ぬ','ね','の'], h: ['は','ひ','ふ','へ','ほ'],
+    m: ['ま','み','む','め','も'], y: ['や','ゆ','よ'],
+    r: ['ら','り','る','れ','ろ'], w: ['わ','を','ん'],
+  };
   let i = 0;
   for (const [char, [right, wrong]] of Object.entries(seed)) {
     // Half are scheduled and already due, the rest are still unseen, so the
@@ -132,8 +139,14 @@ await evaluate(`(() => {
     i += 1;
   }
   store.prefs.newIntroduced = { date: new Date().toLocaleDateString('en-CA'), count: 12 };
-  store.items['kana:vowels-あ'] = { right: 12, wrong: 1, lastSeen: Date.now() };
-  store.items['kana:k-か'] = { right: 9, wrong: 3, lastSeen: Date.now() };
+  // The whole first stage known, so the guide sits on step 2.
+  for (const row of ['vowels','k','s','t','n','h','m','y','r','w']) {
+    for (const kana of KANA_BY_ROW[row]) {
+      store.items['kana:hira:' + row + '-' + kana] =
+        { right: 9, wrong: 1, lastSeen: now, box: 4, due: now + 14 * DAY };
+    }
+  }
+  store.items['kana:kata:vowels-あ'] = { right: 3, wrong: 2, lastSeen: now, box: 1, due: now + DAY };
   store.prefs.kanji = {
     groupIds: ['time'], excluded: [], modes: ['reading'],
     inputModes: { meaning: 'type', reading: 'choice', recall: 'choice', vocab: 'type', listening: 'type' },
@@ -180,9 +193,16 @@ await sleep(300);
 await click('ニチ');
 await shot('quiz', 980);
 
-// ------------------------------------------------------ 3. kanji setup
+// -------------------------------------------------------- 3. progress
 
-await click('Settings');
+await click('Home');
+await click('See progress');
+await shot('progress', 1200);
+
+// ------------------------------------------------------ 4. kanji setup
+
+await goto(BASE);
+await click('Kanji — JLPT N5');
 await evaluate(`window.scrollTo(0, 150)`);
 await sleep(300);
 await shot('setup', 820);

@@ -11,6 +11,24 @@ account, no backend, no network calls. Progress is kept in `localStorage`.
 
 ![A kanji reading card answered correctly, with the on and kun readings and two example words revealed below](docs/screenshots/quiz.png)
 
+## Where to start
+
+739 items across six decks is a lot to face on day one, and picking well means
+knowing things you do not know yet — that the kana come first, that counters
+need numbers, that conjugation needs verbs. So the home screen leads with a
+plan: eighteen stages in the conventional order, each with a goal and a button
+that sets the decks up for it.
+
+![The progress screen: mastery per deck, the week ahead, and the plan](docs/screenshots/progress.png)
+
+A stage is finished when 90% of its items are *known*, which means box 3 or
+higher — they have survived a week, not just been answered once. The pass mark
+leaves room for a couple of stubborn items rather than letting one kana block
+the whole thing.
+
+It suggests and never restricts. Nothing is locked, and choosing decks by hand
+works exactly as it did.
+
 ## Quick start
 
 ```bash
@@ -341,16 +359,18 @@ due date into the scheduler.
 ## Project layout
 
 ```
-src/data/         kana, kanji, counter and vocabulary datasets, plus look-alikes
+src/data/         the six datasets, the look-alike sets, and the study plan
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
 src/lib/conjugate the conjugation rules
+src/lib/progress  what "known" means, and the numbers behind the dashboard
+src/lib/curriculum  turning a stage into items, progress and a deck of cards
 src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, the six setup screens, quiz, results
+src/components/   home, progress, the six setup screens, quiz, results
 tests/            romaji, session-engine, scheduling and storage tests
 scripts/          screenshot capture, and the JMdict cross-check
 ```
@@ -370,6 +390,7 @@ multiple-choice question has exactly one correct option.
 ## Ideas for later
 
 - Sentence reading, with a furigana toggle
+- One shared picker component behind the six setup screens
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond
 

@@ -69,6 +69,14 @@ export const SCRIPT_LABEL: Record<KanaScript, string> = {
 const glyph = (entry: KanaEntry, script: KanaScript): string =>
   script === 'hira' ? entry.hira : entry.kata;
 
+/**
+ * Scheduled per script, because knowing あ says very little about knowing ア.
+ * They were one item until the guided path made the conflation visible: it
+ * marked the katakana stage finished the moment the hiragana one was.
+ */
+export const kanaItemId = (script: KanaScript, entry: KanaEntry): string =>
+  `kana:${script}:${entry.id}`;
+
 export function kanaPool(config: KanaConfig): KanaEntry[] {
   return ALL_KANA.filter((k) => config.groupIds.includes(k.groupId));
 }
@@ -88,7 +96,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
       if (config.modes.includes('recognition')) {
         cards.push({
           id: `kana-recognition-${script}-${entry.id}`,
-          itemId: `kana:${entry.id}`,
+          itemId: kanaItemId(script, entry),
           question: 'Type the sound',
           prompt: shown,
           promptScript: 'jp',
@@ -107,7 +115,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
       if (config.modes.includes('recall')) {
         cards.push({
           id: `kana-recall-${script}-${entry.id}`,
-          itemId: `kana:${entry.id}`,
+          itemId: kanaItemId(script, entry),
           question: `Pick the ${SCRIPT_LABEL[script]}`,
           prompt: entry.romaji,
           promptScript: 'latin',

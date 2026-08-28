@@ -44,10 +44,26 @@ function read(): Store {
     const raw = localStorage.getItem(KEY);
     if (!raw) return emptyStore();
     const parsed = JSON.parse(raw) as Partial<Store>;
-    return { items: parsed.items ?? {}, prefs: parsed.prefs ?? {} };
+    return { items: migrate(parsed.items ?? {}), prefs: parsed.prefs ?? {} };
   } catch {
     return emptyStore();
   }
+}
+
+/**
+ * Kana were once scheduled per glyph rather than per script, so あ and ア
+ * shared an entry. Progress saved under the old key is read as hiragana, which
+ * is what the default deck practises.
+ */
+const LEGACY_KANA = /^kana:(?!hira:|kata:)(.+)$/;
+
+function migrate(items: Record<string, ItemStats>): Record<string, ItemStats> {
+  const out: Record<string, ItemStats> = {};
+  for (const [id, stats] of Object.entries(items)) {
+    const legacy = LEGACY_KANA.exec(id);
+    out[legacy ? `kana:hira:${legacy[1]}` : id] = stats;
+  }
+  return out;
 }
 
 function write(store: Store): void {
