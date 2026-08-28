@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { ALL_KANA } from '../data/kana';
+import { ALL_COUNTERS } from '../data/counters';
 import { ALL_KANJI } from '../data/kanji';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
@@ -10,6 +11,7 @@ interface Props {
   onReview: () => void;
   onKana: () => void;
   onKanji: () => void;
+  onCounters: () => void;
   onReset: () => void;
 }
 
@@ -19,7 +21,7 @@ interface Summary {
   accuracy: number | null;
 }
 
-export function Home({ plan, onReview, onKana, onKanji, onReset }: Props) {
+export function Home({ plan, onReview, onKana, onKanji, onCounters, onReset }: Props) {
   const stats = useMemo(() => loadItemStats(), []);
   const now = Date.now();
   const upcoming = nextDueAt(stats, now);
@@ -44,7 +46,8 @@ export function Home({ plan, onReview, onKana, onKanji, onReset }: Props) {
 
   const kana = summarise(ALL_KANA.map((k) => `kana:${k.id}`));
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
-  const anyProgress = kana.seen + kanji.seen > 0;
+  const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
+  const anyProgress = kana.seen + kanji.seen + counters.seen > 0;
 
   const weakest = useMemo(() => {
     return ALL_KANJI.map((k) => ({ char: k.char, meaning: k.meanings[0], acc: itemAccuracy(stats[`kanji:${k.char}`]) }))
@@ -108,6 +111,15 @@ export function Home({ plan, onReview, onKana, onKanji, onReset }: Props) {
           <h2>Kanji — JLPT N5</h2>
           <p>{ALL_KANJI.length} kanji in nine groups. Meanings, readings, recall and vocabulary.</p>
           <Progress summary={kanji} unit="kanji" />
+        </button>
+
+        <button type="button" className="home-card" onClick={onCounters}>
+          <span className="big">六本 二十歳</span>
+          <h2>Counters, dates &amp; times</h2>
+          <p>
+            {ALL_COUNTERS.length} forms where the number changes shape — ろっぽん, ついたち, よじ.
+          </p>
+          <Progress summary={counters} unit="forms" />
         </button>
       </div>
 

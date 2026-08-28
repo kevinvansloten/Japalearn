@@ -10,11 +10,14 @@
  *   day. That is what keeps the setup screens meaningful: you choose what to
  *   start learning, the scheduler decides when it comes back.
  */
+import { COUNTER_GROUPS } from '../data/counters';
 import { KANA_GROUPS } from '../data/kana';
 import { KANJI_GROUPS } from '../data/kanji';
 import {
+  buildCounterCards,
   buildKanaCards,
   buildKanjiCards,
+  type CounterConfig,
   type KanaConfig,
   type KanjiConfig,
 } from './buildCards';
@@ -45,6 +48,7 @@ const pick = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.lengt
 export function planReview(
   kana: KanaConfig,
   kanji: KanjiConfig,
+  counters: CounterConfig,
   stats: Record<string, ItemStats>,
   newAllowance: number,
   now = Date.now(),
@@ -58,12 +62,19 @@ export function planReview(
       groupIds: KANJI_GROUPS.map((g) => g.id),
       excluded: [],
     }),
+    ...buildCounterCards({
+      ...counters,
+      groupIds: COUNTER_GROUPS.map((g) => g.id),
+      excluded: [],
+    }),
   ];
   const index = indexByItem(everything);
 
   // What the learner has actually chosen to study right now.
   const selected = new Set(
-    [...buildKanaCards(kana), ...buildKanjiCards(kanji)].map((c) => c.itemId),
+    [...buildKanaCards(kana), ...buildKanjiCards(kanji), ...buildCounterCards(counters)].map(
+      (c) => c.itemId,
+    ),
   );
 
   const dueIds: string[] = [];

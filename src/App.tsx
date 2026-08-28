@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KANA_GROUPS } from './data/kana';
-import type { KanaConfig, KanjiConfig } from './lib/buildCards';
+import type { CounterConfig, KanaConfig, KanjiConfig } from './lib/buildCards';
 import type { Card, SessionOptions } from './lib/session';
 import { planReview } from './lib/review';
 import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
 import { Home } from './components/Home';
 import { KanaSetup } from './components/KanaSetup';
+import { CounterSetup } from './components/CounterSetup';
 import { KanjiSetup } from './components/KanjiSetup';
 import { Quiz } from './components/Quiz';
 
@@ -26,7 +27,16 @@ const DEFAULT_KANJI: KanjiConfig = {
   order: 'shuffled',
 };
 
-type Screen = 'home' | 'kana' | 'kanji' | 'quiz';
+const DEFAULT_COUNTERS: CounterConfig = {
+  groupIds: ['time'],
+  excluded: [],
+  modes: ['reading'],
+  inputModes: { reading: 'type', meaning: 'type', listening: 'type' },
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
+type Screen = 'home' | 'kana' | 'kanji' | 'counters' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -34,7 +44,7 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji';
+  back?: 'kana' | 'kanji' | 'counters';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -58,6 +68,16 @@ export default function App() {
     };
   });
 
+  const [counterConfig, setCounterConfig] = useState<CounterConfig>(() => {
+    const saved = loadPref<Partial<CounterConfig>>('counters', {});
+    return {
+      ...DEFAULT_COUNTERS,
+      ...saved,
+      inputModes: { ...DEFAULT_COUNTERS.inputModes, ...saved.inputModes },
+    };
+  });
+
+  useEffect(() => savePref('counters', counterConfig), [counterConfig]);
   useEffect(() => savePref('kana', kanaConfig), [kanaConfig]);
   useEffect(() => savePref('kanji', kanjiConfig), [kanjiConfig]);
 
@@ -65,7 +85,7 @@ export default function App() {
     title: string,
     cards: Card[],
     options: SessionOptions,
-    extra: { back?: 'kana' | 'kanji'; scheduled?: boolean } = {},
+    extra: { back?: 'kana' | 'kanji' | 'counters'; scheduled?: boolean } = {},
   ) => {
     setRun((previous) => ({ id: (previous?.id ?? 0) + 1, title, cards, options, ...extra }));
     setScreen('quiz');
@@ -74,8 +94,8 @@ export default function App() {
   // Recomputed whenever we land back on the home screen, so finishing a review
   // immediately reflects the new schedule.
   const plan = useMemo(
-    () => planReview(kanaConfig, kanjiConfig, loadItemStats(), newAllowanceToday()),
-    [kanaConfig, kanjiConfig, version],
+    () => planReview(kanaConfig, kanjiConfig, counterConfig, loadItemStats(), newAllowanceToday()),
+    [kanaConfig, kanjiConfig, counterConfig, version],
   );
 
   const goHome = () => {
@@ -112,6 +132,7 @@ export default function App() {
           }
           onKana={() => setScreen('kana')}
           onKanji={() => setScreen('kanji')}
+          onCounters={() => setScreen('counters')}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}
@@ -143,6 +164,22 @@ export default function App() {
               cards,
               { flow: kanjiConfig.flow, order: kanjiConfig.order },
               { back: 'kanji' },
+            )
+          }
+        />
+      )}
+
+      {screen === 'counters' && (
+        <CounterSetup
+          config={counterConfig}
+          onChange={setCounterConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              'Counters, dates & times',
+              cards,
+              { flow: counterConfig.flow, order: counterConfig.order },
+              { back: 'counters' },
             )
           }
         />

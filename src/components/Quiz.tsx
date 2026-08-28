@@ -33,6 +33,7 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
   const [draft, setDraft] = useState('');
   const [autoAdvance, setAutoAdvance] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
   const hasVoice = useJapaneseVoice();
   // A review reschedules once. Going again, or drilling the ones you missed,
   // is ordinary practice — otherwise a second pass would push every box up a
@@ -60,6 +61,15 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
       speak(card.speech);
     }
   }, [state.currentId, state.phase, card?.promptScript, card?.speech]);
+
+  // On a phone the card fills the screen, so the answer and the Next button
+  // land below the fold. 'nearest' is a no-op when they are already visible,
+  // which is the usual case on a desktop.
+  useEffect(() => {
+    if (state.phase === 'feedback') {
+      feedbackRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [state.phase, state.currentId]);
 
   // Never let a clip run on past the card that started it.
   useEffect(() => stopSpeaking, []);
@@ -276,7 +286,7 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
       </div>
 
       {feedback && (
-        <div className={feedback.correct ? 'feedback correct' : 'feedback wrong'}>
+        <div ref={feedbackRef} className={feedback.correct ? 'feedback correct' : 'feedback wrong'}>
           <div className="verdict">
             {feedback.correct ? 'Correct' : feedback.given ? `Not quite — you wrote “${feedback.given}”` : 'Answer'}
           </div>

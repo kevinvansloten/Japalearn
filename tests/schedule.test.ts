@@ -1,6 +1,6 @@
 import { KANA_GROUPS } from '../src/data/kana';
 import { KANJI_GROUPS } from '../src/data/kanji';
-import type { KanaConfig, KanjiConfig } from '../src/lib/buildCards';
+import type { CounterConfig, KanaConfig, KanjiConfig } from '../src/lib/buildCards';
 import { planReview } from '../src/lib/review';
 import {
   BOX_INTERVALS,
@@ -76,20 +76,31 @@ const kanji: KanjiConfig = {
   flow: 'once', order: 'ordered',
 };
 
-const empty = planReview(kana, kanji, {}, 5, NOW);
+// No counters in play for these cases; the deck is exercised separately below.
+const counters: CounterConfig = {
+  groupIds: [],
+  excluded: [],
+  modes: ['reading'],
+  inputModes: { reading: 'type', meaning: 'type', listening: 'type' },
+  flow: 'once',
+  order: 'ordered',
+};
+
+const empty = planReview(kana, kanji, counters, {}, 5, NOW);
 eq('a fresh account introduces up to the allowance', empty.cards.length, 5);
 eq('all of them are new', empty.fresh, 5);
 eq('none are due', empty.due, 0);
 ok('new cards come from the selection',
   empty.cards.every((c) => c.itemId.startsWith('kana:vowels-') || c.itemId.startsWith('kanji:')));
 
-eq('a zero allowance introduces nothing', planReview(kana, kanji, {}, 0, NOW).cards.length, 0);
+eq('a zero allowance introduces nothing', planReview(kana, kanji, counters, {}, 0, NOW).cards.length, 0);
 
 // Due items must come back even after their group is unticked, or unticking a
 // group would quietly orphan everything you had already learned in it.
 const dropped = planReview(
   kana,
   kanji,
+  counters,
   { 'kanji:山': stat({ box: 2, due: NOW - DAY }) },
   0,
   NOW,
@@ -99,13 +110,14 @@ eq('and it is the only card', dropped.cards.length, 1);
 eq('built for the right item', dropped.cards[0].itemId, 'kanji:山');
 
 // Not-yet-due items stay out of the deck entirely.
-const resting = planReview(kana, kanji, { 'kanji:一': stat({ box: 3, due: NOW + DAY }) }, 0, NOW);
+const resting = planReview(kana, kanji, counters, { 'kanji:一': stat({ box: 3, due: NOW + DAY }) }, 0, NOW);
 eq('an item that is not due is left alone', resting.cards.length, 0);
 
 // A scheduled item is no longer new, so it must not be counted twice.
 const mixed = planReview(
   kana,
   kanji,
+  counters,
   { 'kanji:一': stat({ box: 1, due: NOW - DAY }) },
   3,
   NOW,
@@ -121,10 +133,23 @@ const everyItem: Record<string, ItemStats> = {};
 for (const g of KANJI_GROUPS) {
   for (const k of g.kanji) everyItem[`kanji:${k.char}`] = stat({ box: 1, due: NOW - DAY });
 }
-const backlog = planReview(kana, kanji, everyItem, 0, NOW);
+const backlog = planReview(kana, kanji, counters, everyItem, 0, NOW);
 eq('every due item is served', backlog.due, KANJI_GROUPS.flatMap((g) => g.kanji).length);
 
 // Review cards must be answerable: one card per due item, drawn from the
 // enabled modes even when the item's group is not selected.
 ok('review cards are real cards', backlog.cards.every((c) => typeof c.check === 'function'));
 ok('kana groups are all reachable', KANA_GROUPS.length > 0);
+
+// A due counter must be buildable even though no counter group is selected,
+// the same way a due kanji is.
+const dueCounter = planReview(
+  kana,
+  kanji,
+  counters,
+  { 'counter:六本': stat({ box: 2, due: NOW - DAY }) },
+  0,
+  NOW,
+);
+eq('a due counter comes back', dueCounter.cards.length, 1);
+eq('and it is the right item', dueCounter.cards[0].itemId, 'counter:六本');
