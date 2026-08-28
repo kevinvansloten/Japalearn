@@ -239,3 +239,43 @@ const kataCards = buildStageCards(katakanaBasic, decks);
 ok('katakana stage cards use katakana ids',
   kataCards.every((c) => c.itemId.startsWith('kana:kata:')),
   kataCards.find((c) => !c.itemId.startsWith('kana:kata:'))?.itemId);
+
+// ------------------------------------- studying a stage must advance it
+
+/**
+ * The bug this guards: the guide's "Study this" started an ordinary practice
+ * session, and practice deliberately never sets a box. A stage is measured in
+ * boxes, so the button could never move the progress it was offering — the
+ * panel sat at "0 of 46 known" however much you studied.
+ *
+ * These assert the two halves of the fix: a stage becomes reachable only
+ * through the scheduling path, and one session is visible as *learning* even
+ * though it is not yet *known*.
+ */
+const stageOne = CURRICULUM[0];
+const stageOneItems = stageItems(stageOne);
+
+// What practice records: counts, and no schedule at all.
+const practised = Object.fromEntries(
+  stageOneItems.map((id) => [id, stat({ right: 3, wrong: 0, lastSeen: NOW })]),
+);
+eq('practice alone leaves a stage untouched', stageProgress(stageOne, practised).known, 0);
+eq('and none of it counts as learning either', stageProgress(stageOne, practised).learning, 0);
+eq('so the plan does not move', currentStage(practised)!.id, stageOne.id);
+
+// What one scheduled session records: box 1 for everything answered.
+const studiedOnce = Object.fromEntries(
+  stageOneItems.map((id) => [id, stat({ right: 1, wrong: 0, box: 1, due: NOW + DAY })]),
+);
+eq('one session is not yet known', stageProgress(stageOne, studiedOnce).known, 0);
+eq('but all of it is visibly learning',
+  stageProgress(stageOne, studiedOnce).learning, stageOneItems.length);
+ok('which is progress the panel can show',
+  stageProgress(stageOne, studiedOnce).learning > 0);
+
+// And repeated sessions carry it to known, completing the stage.
+const studiedUntilKnown = Object.fromEntries(
+  stageOneItems.map((id) => [id, stat({ right: 3, wrong: 0, box: 3, due: NOW + 7 * DAY })]),
+);
+eq('sticking with it completes the stage', isStageComplete(stageOne, studiedUntilKnown), true);
+eq('and the plan moves on', currentStage(studiedUntilKnown)!.id, CURRICULUM[1].id);

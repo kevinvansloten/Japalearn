@@ -190,6 +190,22 @@ export default function App() {
     ],
   );
 
+  /**
+   * Studying a stage is the guided form of a review, so it schedules. Starting
+   * it as ordinary practice left the button unable to move the very progress
+   * it was offering: practice never sets a box, and a stage is measured in
+   * boxes.
+   */
+  const startStage = () => {
+    if (!stage) return;
+    start(
+      stage.title,
+      buildStageCards(stage, decks),
+      { flow: 'mistakes', order: 'shuffled' },
+      { scheduled: true },
+    );
+  };
+
   const goHome = () => {
     setScreen('home');
     setVersion((v) => v + 1);
@@ -230,13 +246,7 @@ export default function App() {
           onParticles={() => setScreen('particles')}
           onProgress={() => setScreen('progress')}
           stage={stage}
-          onStartStage={() => {
-            if (!stage) return;
-            start(stage.title, buildStageCards(stage, decks), {
-              flow: 'mistakes',
-              order: 'shuffled',
-            });
-          }}
+          onStartStage={startStage}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}

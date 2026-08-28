@@ -10,7 +10,9 @@ import type { Stage } from '../data/curriculum';
 import { stageNumber, stageProgress } from '../lib/curriculum';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
+import type { ItemStats } from '../lib/storage';
 import { exportProgress, importProgress, loadItemStats, resetProgress } from '../lib/storage';
+import { MasteryBar } from './ui';
 
 interface Props {
   plan: ReviewPlan;
@@ -101,9 +103,7 @@ export function Home({
               </div>
               <h2>{stage.title}</h2>
               <p className="hint">{stage.goal}</p>
-              <p className="faint">
-                {stageProgress(stage, stats).known} of {stageProgress(stage, stats).total} known
-              </p>
+              <StageProgress stage={stage} stats={stats} />
             </>
           ) : (
             <>
@@ -275,6 +275,24 @@ export function Home({
           )}
         </div>
         {notice && <span className="faint">{notice}</span>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A first session leaves everything in box 1, which is "learning" rather than
+ * "known" — so showing only the known count reads as no progress at all after
+ * a session that went fine. Both are shown, with a bar.
+ */
+function StageProgress({ stage, stats }: { stage: Stage; stats: Record<string, ItemStats> }) {
+  const { known, learning, total } = stageProgress(stage, stats);
+  return (
+    <div style={{ maxWidth: 320, marginTop: 8 }}>
+      <MasteryBar known={known} learning={learning} total={total} />
+      <div className="faint" style={{ marginTop: 6 }}>
+        {known} of {total} known
+        {learning > 0 && ` · ${learning} still learning`}
       </div>
     </div>
   );

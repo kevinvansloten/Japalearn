@@ -7,9 +7,9 @@ import { ALL_KANJI } from '../data/kanji';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
 import { ALL_WORDS } from '../data/words';
 import { currentStage, isStageComplete, stageNumber, stageProgress } from '../lib/curriculum';
-import { reviewForecast, summarise, weakest, type Summary } from '../lib/progress';
+import { reviewForecast, summarise, weakest } from '../lib/progress';
 import { loadItemStats } from '../lib/storage';
-import { Panel } from './ui';
+import { MasteryBar, Panel } from './ui';
 
 const DECKS: { label: string; itemIds: string[] }[] = [
   {
@@ -56,16 +56,6 @@ function describe(itemId: string): { glyph: string; note: string } | null {
     default:
       return null;
   }
-}
-
-function Bar({ summary }: { summary: Summary }) {
-  const pct = (n: number) => (summary.total ? (n / summary.total) * 100 : 0);
-  return (
-    <div className="mastery-bar" title={`${summary.known} known, ${summary.learning} learning`}>
-      <span className="known" style={{ width: `${pct(summary.known)}%` }} />
-      <span className="learning" style={{ width: `${pct(summary.learning)}%` }} />
-    </div>
-  );
 }
 
 interface Props {
@@ -115,7 +105,11 @@ export function Progress({ onHome }: Props) {
                   {summary.accuracy !== null && ` · ${summary.accuracy}%`}
                 </span>
               </div>
-              <Bar summary={summary} />
+              <MasteryBar
+                known={summary.known}
+                learning={summary.learning}
+                total={summary.total}
+              />
             </div>
           );
         })}

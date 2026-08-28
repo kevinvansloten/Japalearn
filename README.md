@@ -123,8 +123,18 @@ daily load, which is the surest way to stop reviewing at all. The review deck
 picks a random enabled mode each time an item comes round, so both get
 exercised over the weeks.
 
-Practising a deck yourself never touches the schedule — drilling something ten
-times in an afternoon should not push its next review out a month.
+Studying a stage from the plan counts as a review of that stage: it is the
+guided form of the same thing, and it has to be, or the button could never move
+the progress it is offering.
+
+Picking a deck and drilling it yourself is different, and deliberately does not
+touch the schedule — drilling something ten times in an afternoon should not
+push its next review out a month. The deck cards on the home screen still show
+what you have practised and how accurately.
+
+One session leaves everything in box 1, which is *learning* rather than
+*known*, so the plan shows both. Otherwise a session that went perfectly well
+would read as no progress at all.
 
 ## Counters, dates & times
 
