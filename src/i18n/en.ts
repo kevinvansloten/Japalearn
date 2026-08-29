@@ -83,6 +83,7 @@ export const en = {
     nothingDue: 'Nothing due',
     toReview: 'to review',
     fresh: 'new',
+    aboutMinutes: (n: number) => `about ${n} minute${n === 1 ? '' : 's'}`,
     nextReview: (gap: string) => `Next review ${gap}.`,
     nothingScheduled: 'Pick a deck below and practise — what you get right starts the clock.',
     review: (n: number) => `Review ${n}`,
@@ -402,8 +403,9 @@ export const en = {
     daysPerWeek: 'Days a week',
     weekly: (n: number) => `${n} new items a week`,
     budgetNote:
-      'The budget is weekly, so a day you skip is not a day lost — the allowance is still there ' +
-      'when you come back, as a longer session.',
+      'Two ceilings, not one: a sitting introduces at most that many new items, and a week at ' +
+      'most that many times the days you picked. A day you skip is not carried forward into a ' +
+      'double session — it shows up as a later date instead.',
 
     headline: (when: string) => `You would be through it around ${when}`,
     headlineDays: (when: string) => `You would be through it ${when}`,

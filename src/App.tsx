@@ -11,7 +11,7 @@ import type {
 import type { Card, SessionOptions } from './lib/session';
 import { planReview, type Decks } from './lib/review';
 import { buildStageCards, currentStage } from './lib/curriculum';
-import type { Pace } from './lib/schedule';
+import { sessionNewCap, type Pace } from './lib/schedule';
 import { titleOf } from './i18n/content';
 import {
   loadItemStats,
@@ -208,7 +208,15 @@ function Learner() {
   // Recomputed whenever we land back on the home screen, so finishing a review
   // immediately reflects the new schedule.
   const plan = useMemo(
-    () => planReview(decks, loadItemStats(), newAllowanceToday(), Date.now(), s),
+    () =>
+      planReview(
+        decks,
+        loadItemStats(),
+        // The week's remaining allowance, taken one sitting at a time.
+        sessionNewCap(pace, newAllowanceToday()),
+        Date.now(),
+        s,
+      ),
     [
       kanaConfig,
       kanjiConfig,

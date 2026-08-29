@@ -10,7 +10,13 @@ import type { Stage } from '../data/curriculum';
 import { stageNumber, stageProgress } from '../lib/curriculum';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
-import { exportProgress, importProgress, loadItemStats, resetProgress } from '../lib/storage';
+import {
+  exportProgress,
+  importProgress,
+  loadItemStats,
+  resetProgress,
+  secondsPerCard,
+} from '../lib/storage';
 import { useStrings } from '../i18n';
 import { goalOf, titleOf } from '../i18n/content';
 
@@ -58,6 +64,9 @@ export function Home({
   const stats = useMemo(() => loadItemStats(), []);
   const now = Date.now();
   const upcoming = nextDueAt(stats, now);
+  // What the session in front of you actually costs. A backlog after a week
+  // away is a big number however it is dressed up, so say the number.
+  const minutes = Math.max(1, Math.round((plan.cards.length * secondsPerCard().seconds) / 60));
 
   const summarise = (ids: string[]): Summary => {
     let right = 0;
@@ -149,6 +158,8 @@ export function Home({
                   <b>{plan.fresh}</b> {s.home.fresh}
                 </>
               )}
+              {' · '}
+              {s.home.aboutMinutes(minutes)}
             </p>
           ) : (
             <p className="hint">

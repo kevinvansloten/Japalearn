@@ -63,15 +63,37 @@ export function asPace(value: unknown): Pace {
 }
 
 /**
- * New items are budgeted by the week, not the day.
+ * New items answer to two limits, and each means exactly what its name says.
  *
- * A daily cap punishes exactly the learner who told us they study four days a
- * week: on the three days they said they would skip, the allowance expires
- * unspent, and the finish date the plan screen promises never arrives. A
- * weekly budget spends the same total, and lets it land on the days they are
- * actually here — longer sessions, not a slower course.
+ * `newPerDay` is the most one sitting introduces. `weeklyAllowance` is the most
+ * a week does. Neither alone is enough:
+ *
+ * - **A daily cap alone leaves `daysPerWeek` decorative.** A learner who asks
+ *   for fifteen a day across four days wants sixty a week; capped only by the
+ *   day, sitting down all seven gets them a hundred and five, and the date the
+ *   plan screen promised was for a course they are no longer taking.
+ * - **A weekly budget alone arrives in a heap.** Whatever has not been spent is
+ *   available the moment you sit down, so a fresh install opens on a week's
+ *   worth at once, and a week away is met with the same wall on return. It is
+ *   lumpy even in an ordinary week: two big sittings, then two with nothing new
+ *   left in them.
+ *
+ * Together they are smooth. Study the days you promised and you get `newPerDay`
+ * every time; study more and the week's ceiling throttles you back to the pace
+ * you actually chose, rather than quietly running at the faster one.
  */
 export const weeklyAllowance = (pace: Pace): number => pace.newPerDay * pace.daysPerWeek;
+
+/**
+ * New items this sitting may introduce: whichever of the two limits binds.
+ *
+ * A skipped day is therefore not carried forward into a double session. That is
+ * deliberate — the budget is a ceiling, not a debt, and forty unfamiliar cards
+ * in one evening is how people stop opening the app. Falling behind the pace
+ * shows up where it belongs, in the date on the plan screen.
+ */
+export const sessionNewCap = (pace: Pace, allowance: number): number =>
+  Math.max(0, Math.min(allowance, pace.newPerDay));
 
 /** Introductions per calendar day, which is what a finish date is paced by. */
 export const dailyIntake = (pace: Pace): number => weeklyAllowance(pace) / 7;

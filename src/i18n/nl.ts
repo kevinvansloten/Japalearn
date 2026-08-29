@@ -69,6 +69,7 @@ export const nl: Strings = {
     nothingDue: 'Niets aan de beurt',
     toReview: 'te herhalen',
     fresh: 'nieuw',
+    aboutMinutes: (n) => `ongeveer ${n} ${n === 1 ? 'minuut' : 'minuten'}`,
     nextReview: (gap) => `Volgende herhaling ${gap}.`,
     nothingScheduled:
       'Kies hieronder een deck en ga oefenen — wat je goed hebt, zet de klok in gang.',
@@ -399,8 +400,9 @@ export const nl: Strings = {
     daysPerWeek: 'Dagen per week',
     weekly: (n) => `${n} nieuwe items per week`,
     budgetNote:
-      'Het budget geldt per week, dus een dag die je overslaat ben je niet kwijt — je tegoed ' +
-      'staat er nog als je terugkomt, als een langere sessie.',
+      'Twee plafonds, niet één: één zitting introduceert hooguit zoveel nieuwe items, en een ' +
+      'week hooguit dat maal het aantal dagen dat je koos. Een overgeslagen dag wordt niet ' +
+      'ingehaald in een dubbele sessie — die zie je terug als een latere datum.',
 
     headline: (when) => `Hier ben je rond ${when} doorheen`,
     headlineDays: (when) => `Hier ben je ${when} doorheen`,

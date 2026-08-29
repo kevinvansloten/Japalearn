@@ -117,12 +117,26 @@ learning 日 it should not quietly disappear. **New items only come from your
 current selection**, and only up to a budget you set, so a fresh install is a
 manageable handful rather than 300 cards.
 
-That budget is weekly rather than daily. A daily cap punishes exactly the person
-who told you they study four days a week: on the three days they said they would
-skip, the allowance expires unspent and the finish date never arrives. A week's
-budget spends the same total but lets it land on the days they are actually
-there — longer sessions, not a slower course. The trade-off is honest and worth
-knowing: come back after a week away and the whole week's allowance is waiting.
+New items answer to two ceilings, and each means what its name says. A sitting
+introduces at most **new items a day**; a week introduces at most that many
+times **days a week**. Neither alone works. Capped only by the day, the
+days-a-week setting is decorative — someone who asked for fifteen across four
+days gets a hundred and five by sitting down all seven, and the date the plan
+screen promised was for a course they are no longer taking. Budgeted only by the
+week, the allowance arrives in a heap: a fresh install opens on a week's worth
+at once, a week away is met with the same wall, and even an ordinary week comes
+out lumpy — two big sittings, then two with nothing new left in them.
+
+Together they are smooth. Study the days you promised and you get the same
+handful every time; study more and the week's ceiling holds you to the pace you
+actually chose. A day you skip is not carried forward into a double session —
+the budget is a ceiling, not a debt, and falling behind shows up where it
+belongs, in the date on the plan screen.
+
+Reviews are not capped, because an item that is due is due. What the home screen
+does instead is say what the session costs before you start it — *110 to review ·
+15 new · about 17 minutes* — so a backlog after a fortnight away is a number you
+can decide about rather than a surprise you discover forty cards in.
 
 Scheduling is per item, not per item-and-mode. Knowing 日 → "day" is admittedly
 not the same as knowing 日 → ニチ, but scheduling those separately triples the
