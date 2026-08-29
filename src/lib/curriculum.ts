@@ -22,6 +22,7 @@ import type { Decks } from './review';
 import { summarise, type Summary } from './progress';
 import type { Card } from './session';
 import type { ItemStats } from './storage';
+import { en, type Strings } from '../i18n/en';
 
 /** A stage counts as done once this share of its items is known. */
 export const STAGE_PASS_MARK = 0.9;
@@ -86,31 +87,37 @@ export const stageNumber = (stage: Stage): number =>
  * so their choice of modes and typing still applies — only the selection is
  * overridden.
  */
-export function buildStageCards(stage: Stage, decks: Decks): Card[] {
+export function buildStageCards(stage: Stage, decks: Decks, s: Strings = en): Card[] {
   return stage.parts.flatMap((part) => {
     switch (part.deck) {
       case 'kana':
-        return buildKanaCards({
-          ...decks.kana,
-          groupIds: part.groupIds,
-          ...(part.scripts ? { scripts: part.scripts } : {}),
-        });
+        return buildKanaCards(
+          {
+            ...decks.kana,
+            groupIds: part.groupIds,
+            ...(part.scripts ? { scripts: part.scripts } : {}),
+          },
+          s,
+        );
       case 'kanji':
-        return buildKanjiCards({ ...decks.kanji, groupIds: part.groupIds, excluded: [] });
+        return buildKanjiCards({ ...decks.kanji, groupIds: part.groupIds, excluded: [] }, s);
       case 'counters':
-        return buildCounterCards({ ...decks.counters, groupIds: part.groupIds, excluded: [] });
+        return buildCounterCards({ ...decks.counters, groupIds: part.groupIds, excluded: [] }, s);
       case 'words':
-        return buildWordCards({ ...decks.words, groupIds: part.groupIds, excluded: [] });
+        return buildWordCards({ ...decks.words, groupIds: part.groupIds, excluded: [] }, s);
       case 'conjugation':
-        return buildConjugationCards({
-          ...decks.conjugation,
-          groupIds: part.groupIds,
-          excluded: [],
-          ...(part.verbForms ? { verbForms: part.verbForms } : {}),
-          ...(part.adjectiveForms ? { adjectiveForms: part.adjectiveForms } : {}),
-        });
+        return buildConjugationCards(
+          {
+            ...decks.conjugation,
+            groupIds: part.groupIds,
+            excluded: [],
+            ...(part.verbForms ? { verbForms: part.verbForms } : {}),
+            ...(part.adjectiveForms ? { adjectiveForms: part.adjectiveForms } : {}),
+          },
+          s,
+        );
       case 'particles':
-        return buildParticleCards({ ...decks.particles, groupIds: part.groupIds, excluded: [] });
+        return buildParticleCards({ ...decks.particles, groupIds: part.groupIds, excluded: [] }, s);
     }
   });
 }

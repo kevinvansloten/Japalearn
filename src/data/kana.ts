@@ -152,11 +152,9 @@ export const KANA_GROUPS: KanaGroup[] = SPECS.map((spec) => ({
 
 export const ALL_KANA: KanaEntry[] = KANA_GROUPS.flatMap((g) => g.kana);
 
-export const SECTION_LABELS: Record<KanaSection, string> = {
-  gojuon: 'Gojūon — the basic 46',
-  dakuten: 'Dakuten & handakuten — が ざ だ ば ぱ',
-  yoon: 'Yōon — combinations like きゃ',
-};
+// The names of the three sections are interface text rather than data — they
+// are translated alongside the rest of it, in i18n/en.ts under `kanaSection`.
+// The group labels below stay here: あ / a reads the same in every language.
 
 export const groupsBySection = (section: KanaSection): KanaGroup[] =>
   KANA_GROUPS.filter((g) => g.section === section);

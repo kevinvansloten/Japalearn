@@ -1,16 +1,11 @@
 import { useMemo } from 'react';
 import { KANJI_GROUPS } from '../data/kanji';
-import {
-  KANJI_MODE_BLURB,
-  KANJI_MODE_LABEL,
-  buildKanjiCards,
-  kanjiPool,
-  type KanjiConfig,
-  type KanjiMode,
-} from '../lib/buildCards';
+import { buildKanjiCards, kanjiPool, type KanjiConfig, type KanjiMode } from '../lib/buildCards';
 import type { Card, InputMode } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, meaningsOf } from '../i18n/content';
 import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
 
 const MODES: KanjiMode[] = ['meaning', 'reading', 'recall', 'vocab', 'listening'];
@@ -35,6 +30,7 @@ interface Props {
 }
 
 export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<KanjiConfig>) => onChange({ ...config, ...update });
   const stats = useMemo(() => loadItemStats(), []);
   const hasVoice = useJapaneseVoice();
@@ -46,7 +42,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
   const selectedKanji = kanjiPool(usable).length;
-  const cards = buildKanjiCards(usable);
+  const cards = buildKanjiCards(usable, s);
   const ready = cards.length > 0;
 
   const setGroupKanji = (groupId: string, include: boolean) => {
@@ -64,19 +60,17 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Kanji — JLPT N5</strong>
-          <div className="faint">
-            {selectedKanji} kanji selected · {cards.length} cards
-          </div>
+          <strong>{s.deck.kanji}</strong>
+          <div className="faint">{s.setup.kanjiSelected(selectedKanji, cards.length)}</div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
       <Panel
-        title="Which kanji?"
-        hint="Turn on the groups you are studying, then switch off individual kanji you already know."
+        title={s.setup.whichKanji}
+        hint={s.setup.whichKanjiHint}
         aside={
           <SelectAll
             all={() => patch({ groupIds: KANJI_GROUPS.map((g) => g.id), excluded: [] })}
@@ -95,10 +89,10 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
                     pressed={on}
                     onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
                   >
-                    {group.label} · {included}/{group.kanji.length}
+                    {labelOf(group, s.lang)} · {included}/{group.kanji.length}
                   </Chip>
                   <div className="hint" style={{ marginTop: 4 }}>
-                    {group.blurb}
+                    {blurbOf(group, s.lang)}
                   </div>
                 </div>
                 {on && (
@@ -120,7 +114,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
                         type="button"
                         className="kanji-toggle"
                         aria-pressed={isIncluded}
-                        title={`${k.char} — ${k.meanings.join(', ')}`}
+                        title={`${k.char} — ${meaningsOf(k, s.lang).join(', ')}`}
                         onClick={() => patch({ excluded: toggle(config.excluded, k.char) })}
                       >
                         {k.char}
@@ -135,10 +129,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
         })}
       </Panel>
 
-      <Panel
-        title="How should you be asked?"
-        hint="Pick any combination. Each mode can be typed or multiple choice."
-      >
+      <Panel title={s.setup.howAsked} hint={s.setup.anyCombinationEach}>
         <div className="mode-list">
           {MODES.map((mode) => (
             <ModeCard
@@ -149,11 +140,11 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
                 const next = toggle(config.modes, mode);
                 if (next.length) patch({ modes: next });
               }}
-              title={KANJI_MODE_LABEL[mode]}
+              title={s.kanjiMode.label[mode]}
               blurb={
                 mode === 'listening' && !hasVoice
-                  ? 'Needs a Japanese voice installed on this device.'
-                  : KANJI_MODE_BLURB[mode]
+                  ? s.setup.needsVoice
+                  : s.kanjiMode.blurb[mode]
               }
               aside={
                 <Segmented<InputMode>
@@ -162,8 +153,8 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
                     patch({ inputModes: { ...config.inputModes, [mode]: value } })
                   }
                   options={[
-                    { value: 'type', label: 'Type' },
-                    { value: 'choice', label: 'Choose' },
+                    { value: 'type', label: s.common.type },
+                    { value: 'choice', label: s.common.choose },
                   ]}
                 />
               }
@@ -172,8 +163,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
         </div>
         {usable.modes.includes('recall') && config.inputModes.recall === 'type' && (
           <p className="faint" style={{ marginTop: 10 }}>
-            Meaning → kanji with typing needs a Japanese IME installed. Multiple choice works
-            everywhere.
+            {s.setup.kanjiImeNote}
           </p>
         )}
       </Panel>
@@ -192,7 +182,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
           disabled={!ready}
           onClick={() => onStart(cards)}
         >
-          {ready ? `Start — ${cards.length} cards` : 'Pick at least one group'}
+          {ready ? s.setup.start(cards.length) : s.setup.pickAGroup}
         </button>
       </div>
     </div>

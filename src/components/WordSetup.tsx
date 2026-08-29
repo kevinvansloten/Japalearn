@@ -1,16 +1,11 @@
 import { useMemo } from 'react';
 import { WORD_GROUPS, hasKanji } from '../data/words';
-import {
-  WORD_MODE_BLURB,
-  WORD_MODE_LABEL,
-  buildWordCards,
-  wordPool,
-  type WordConfig,
-  type WordMode,
-} from '../lib/buildCards';
+import { buildWordCards, wordPool, type WordConfig, type WordMode } from '../lib/buildCards';
 import type { Card, InputMode } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, meaningsOf } from '../i18n/content';
 import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
 
 const MODES: WordMode[] = ['meaning', 'reading', 'recall', 'listening'];
@@ -34,6 +29,7 @@ interface Props {
 }
 
 export function WordSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<WordConfig>) => onChange({ ...config, ...update });
   const stats = useMemo(() => loadItemStats(), []);
   const hasVoice = useJapaneseVoice();
@@ -43,7 +39,7 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
   const selected = wordPool(usable);
-  const cards = buildWordCards(usable);
+  const cards = buildWordCards(usable, s);
   const ready = cards.length > 0;
   const kanaOnly = selected.filter((w) => !hasKanji(w)).length;
 
@@ -62,19 +58,17 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Vocabulary — N5</strong>
-          <div className="faint">
-            {selected.length} words selected · {cards.length} cards
-          </div>
+          <strong>{s.deck.words}</strong>
+          <div className="faint">{s.setup.wordsSelected(selected.length, cards.length)}</div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
       <Panel
-        title="Which words?"
-        hint="Turn on the sets you are working on, then switch off anything you already know."
+        title={s.setup.whichWords}
+        hint={s.setup.whichWordsHint}
         aside={
           <SelectAll
             all={() => patch({ groupIds: WORD_GROUPS.map((g) => g.id), excluded: [] })}
@@ -93,10 +87,10 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
                     pressed={on}
                     onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
                   >
-                    {group.label} · {included}/{group.words.length}
+                    {labelOf(group, s.lang)} · {included}/{group.words.length}
                   </Chip>
                   <div className="hint" style={{ marginTop: 4 }}>
-                    {group.blurb}
+                    {blurbOf(group, s.lang)}
                   </div>
                 </div>
                 {on && (
@@ -120,7 +114,7 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
                         aria-pressed={isIncluded}
                         title={`${entry.word}${
                           hasKanji(entry) ? ` (${entry.reading})` : ''
-                        } — ${entry.meanings.join(', ')}`}
+                        } — ${meaningsOf(entry, s.lang).join(', ')}`}
                         onClick={() => patch({ excluded: toggle(config.excluded, entry.word) })}
                       >
                         {entry.word}
@@ -135,7 +129,7 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
         })}
       </Panel>
 
-      <Panel title="How should you be asked?" hint="Pick any combination.">
+      <Panel title={s.setup.howAsked} hint={s.setup.anyCombination}>
         <div className="mode-list">
           {MODES.map((mode) => (
             <ModeCard
@@ -146,11 +140,9 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
                 const next = toggle(config.modes, mode);
                 if (next.length) patch({ modes: next });
               }}
-              title={WORD_MODE_LABEL[mode]}
+              title={s.wordMode.label[mode]}
               blurb={
-                mode === 'listening' && !hasVoice
-                  ? 'Needs a Japanese voice installed on this device.'
-                  : WORD_MODE_BLURB[mode]
+                mode === 'listening' && !hasVoice ? s.setup.needsVoice : s.wordMode.blurb[mode]
               }
               aside={
                 <Segmented<InputMode>
@@ -159,8 +151,8 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
                     patch({ inputModes: { ...config.inputModes, [mode]: value } })
                   }
                   options={[
-                    { value: 'type', label: 'Type' },
-                    { value: 'choice', label: 'Choose' },
+                    { value: 'type', label: s.common.type },
+                    { value: 'choice', label: s.common.choose },
                   ]}
                 />
               }
@@ -169,13 +161,12 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
         </div>
         {usable.modes.includes('reading') && kanaOnly > 0 && (
           <p className="faint" style={{ marginTop: 10 }}>
-            {kanaOnly} of the selected words are written in kana already, so they get no reading
-            card.
+            {s.setup.kanaOnlyNote(kanaOnly)}
           </p>
         )}
         {usable.modes.includes('recall') && config.inputModes.recall === 'type' && (
           <p className="faint" style={{ marginTop: 10 }}>
-            Meaning → word with typing needs a Japanese IME. Multiple choice works everywhere.
+            {s.setup.wordImeNote}
           </p>
         )}
       </Panel>
@@ -194,7 +185,7 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
           disabled={!ready}
           onClick={() => onStart(cards)}
         >
-          {ready ? `Start — ${cards.length} cards` : 'Pick at least one set'}
+          {ready ? s.setup.start(cards.length) : s.setup.pickASet}
         </button>
       </div>
     </div>

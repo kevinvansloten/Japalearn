@@ -33,6 +33,7 @@ import {
 import { isDue, isNew } from './schedule';
 import { shuffle, type Card } from './session';
 import type { ItemStats } from './storage';
+import { en, type Strings } from '../i18n/en';
 
 /** Every deck's current settings. One field per deck, so adding another does
  *  not grow an argument list that three call sites have to track. */
@@ -70,41 +71,59 @@ export function planReview(
   stats: Record<string, ItemStats>,
   newAllowance: number,
   now = Date.now(),
+  s: Strings = en,
 ): ReviewPlan {
   const { kana, kanji, counters, words, conjugation, particles } = decks;
   // Everything askable in the modes currently enabled, ignoring group
   // selection, so a due item can always be built into a card.
   const everything = [
-    ...buildKanaCards({ ...kana, groupIds: KANA_GROUPS.map((g) => g.id) }),
-    ...buildKanjiCards({
-      ...kanji,
-      groupIds: KANJI_GROUPS.map((g) => g.id),
-      excluded: [],
-    }),
-    ...buildCounterCards({
-      ...counters,
-      groupIds: COUNTER_GROUPS.map((g) => g.id),
-      excluded: [],
-    }),
-    ...buildWordCards({
-      ...words,
-      groupIds: WORD_GROUPS.map((g) => g.id),
-      excluded: [],
-    }),
-    ...buildConjugationCards({
-      ...conjugation,
-      groupIds: CONJUGATION_GROUPS.map((g) => g.id),
-      excluded: [],
-    }),
-    ...buildParticleCards({
-      ...particles,
-      groupIds: PARTICLE_GROUPS.map((g) => g.id),
-      excluded: [],
-    }),
+    ...buildKanaCards({ ...kana, groupIds: KANA_GROUPS.map((g) => g.id) }, s),
+    ...buildKanjiCards(
+      {
+        ...kanji,
+        groupIds: KANJI_GROUPS.map((g) => g.id),
+        excluded: [],
+      },
+      s,
+    ),
+    ...buildCounterCards(
+      {
+        ...counters,
+        groupIds: COUNTER_GROUPS.map((g) => g.id),
+        excluded: [],
+      },
+      s,
+    ),
+    ...buildWordCards(
+      {
+        ...words,
+        groupIds: WORD_GROUPS.map((g) => g.id),
+        excluded: [],
+      },
+      s,
+    ),
+    ...buildConjugationCards(
+      {
+        ...conjugation,
+        groupIds: CONJUGATION_GROUPS.map((g) => g.id),
+        excluded: [],
+      },
+      s,
+    ),
+    ...buildParticleCards(
+      {
+        ...particles,
+        groupIds: PARTICLE_GROUPS.map((g) => g.id),
+        excluded: [],
+      },
+      s,
+    ),
   ];
   const index = indexByItem(everything);
 
-  // What the learner has actually chosen to study right now.
+  // What the learner has actually chosen to study right now. Only the item ids
+  // are read, and those do not vary by language, so these are left in the
+  // default bundle rather than translated and thrown away.
   const selected = new Set(
     [
       ...buildKanaCards(kana),

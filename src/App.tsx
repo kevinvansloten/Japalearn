@@ -11,8 +11,18 @@ import type {
 import type { Card, SessionOptions } from './lib/session';
 import { planReview, type Decks } from './lib/review';
 import { buildStageCards, currentStage } from './lib/curriculum';
-import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
+import type { Pace } from './lib/schedule';
+import { titleOf } from './i18n/content';
+import {
+  loadItemStats,
+  loadPace,
+  loadPref,
+  newAllowanceToday,
+  savePace,
+  savePref,
+} from './lib/storage';
 import { Home } from './components/Home';
+import { Plan } from './components/Plan';
 import { KanaSetup } from './components/KanaSetup';
 import { CounterSetup } from './components/CounterSetup';
 import { KanjiSetup } from './components/KanjiSetup';
@@ -21,6 +31,8 @@ import { ConjugationSetup } from './components/ConjugationSetup';
 import { ParticleSetup } from './components/ParticleSetup';
 import { Progress } from './components/Progress';
 import { Quiz } from './components/Quiz';
+import { LanguagePicker } from './components/ui';
+import { LanguageProvider, useStrings } from './i18n';
 
 const DEFAULT_KANA: KanaConfig = {
   scripts: ['hira'],
@@ -78,7 +90,7 @@ const DEFAULT_PARTICLES: ParticleConfig = {
 
 type Screen =
   | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
-  | 'progress' | 'quiz';
+  | 'progress' | 'plan' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -92,6 +104,15 @@ interface Run {
 }
 
 export default function App() {
+  return (
+    <LanguageProvider>
+      <Learner />
+    </LanguageProvider>
+  );
+}
+
+function Learner() {
+  const s = useStrings();
   const [screen, setScreen] = useState<Screen>('home');
   const [run, setRun] = useState<Run | null>(null);
   /** bumped after a progress reset so the home screen re-reads localStorage */
@@ -142,6 +163,16 @@ export default function App() {
     ...loadPref<Partial<ParticleConfig>>('particles', {}),
   }));
 
+  // Not a deck setting: the pace is what the new-item budget is spent against.
+  // Saved on the way through rather than in an effect, because the review plan
+  // below reads it back out of storage and would otherwise recompute against
+  // the old value for one render.
+  const [pace, setPaceState] = useState<Pace>(loadPace);
+  const setPace = (next: Pace) => {
+    savePace(next);
+    setPaceState(next);
+  };
+
   useEffect(() => savePref('particles', particleConfig), [particleConfig]);
   useEffect(() => savePref('conjugation', conjugationConfig), [conjugationConfig]);
   useEffect(() => savePref('words', wordConfig), [wordConfig]);
@@ -177,8 +208,7 @@ export default function App() {
   // Recomputed whenever we land back on the home screen, so finishing a review
   // immediately reflects the new schedule.
   const plan = useMemo(
-    () =>
-      planReview(decks, loadItemStats(), newAllowanceToday()),
+    () => planReview(decks, loadItemStats(), newAllowanceToday(), Date.now(), s),
     [
       kanaConfig,
       kanjiConfig,
@@ -186,7 +216,9 @@ export default function App() {
       wordConfig,
       conjugationConfig,
       particleConfig,
+      pace,
       version,
+      s,
     ],
   );
 
@@ -208,9 +240,10 @@ export default function App() {
           <span>JapanLearner</span>
         </button>
         <span className="spacer" />
+        <LanguagePicker />
         {screen !== 'home' && (
           <button type="button" className="btn ghost" onClick={goHome}>
-            Home
+            {s.common.home}
           </button>
         )}
       </header>
@@ -220,7 +253,12 @@ export default function App() {
           key={version}
           plan={plan}
           onReview={() =>
-            start('Review', plan.cards, { flow: 'mistakes', order: 'shuffled' }, { scheduled: true })
+            start(
+              s.run.review,
+              plan.cards,
+              { flow: 'mistakes', order: 'shuffled' },
+              { scheduled: true },
+            )
           }
           onKana={() => setScreen('kana')}
           onKanji={() => setScreen('kanji')}
@@ -229,10 +267,11 @@ export default function App() {
           onConjugation={() => setScreen('conjugation')}
           onParticles={() => setScreen('particles')}
           onProgress={() => setScreen('progress')}
+          onPlan={() => setScreen('plan')}
           stage={stage}
           onStartStage={() => {
             if (!stage) return;
-            start(stage.title, buildStageCards(stage, decks), {
+            start(titleOf(stage, s.lang), buildStageCards(stage, decks, s), {
               flow: 'mistakes',
               order: 'shuffled',
             });
@@ -248,7 +287,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Hiragana & katakana',
+              s.run.kana,
               cards,
               { flow: kanaConfig.flow, order: kanaConfig.order },
               { back: 'kana' },
@@ -264,7 +303,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Kanji — N5',
+              s.run.kanji,
               cards,
               { flow: kanjiConfig.flow, order: kanjiConfig.order },
               { back: 'kanji' },
@@ -280,7 +319,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Counters, dates & times',
+              s.run.counters,
               cards,
               { flow: counterConfig.flow, order: counterConfig.order },
               { back: 'counters' },
@@ -296,7 +335,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Vocabulary — N5',
+              s.run.words,
               cards,
               { flow: wordConfig.flow, order: wordConfig.order },
               { back: 'words' },
@@ -312,7 +351,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Conjugation',
+              s.run.conjugation,
               cards,
               { flow: conjugationConfig.flow, order: conjugationConfig.order },
               { back: 'conjugation' },
@@ -328,7 +367,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Particles',
+              s.run.particles,
               cards,
               { flow: particleConfig.flow, order: particleConfig.order },
               { back: 'particles' },
@@ -338,6 +377,10 @@ export default function App() {
       )}
 
       {screen === 'progress' && <Progress key={version} onHome={goHome} />}
+
+      {screen === 'plan' && (
+        <Plan key={version} pace={pace} onPace={setPace} onHome={goHome} />
+      )}
 
       {screen === 'quiz' && run && (
         <Quiz

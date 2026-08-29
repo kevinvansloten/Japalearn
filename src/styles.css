@@ -918,6 +918,65 @@ input {
   background: var(--bg-sunken);
 }
 
+/* --------------------------------------------------------------- plan */
+
+/* The headline is a sentence, not a row of controls, so it stacks. */
+.plan-headline {
+  display: block;
+}
+
+.plan-headline h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.plan-headline .faint {
+  margin: 10px 0 0;
+  max-width: 62ch;
+}
+
+.pace-row {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pace-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pace-row > label,
+.pace-row > span:first-child {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.pace-row input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.pace-value {
+  min-width: 3ch;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dates in a column line up only if the digits are the same width. */
+.stage-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /*
  * On a phone the whole point is that the card and its feedback fit together,
  * so everything in the quiz tightens up rather than just reflowing.
@@ -976,5 +1035,20 @@ input {
 
   .forecast {
     gap: 5px;
+  }
+
+  /* A 150px label column leaves nothing for the slider on a phone. */
+  .pace-row {
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+  }
+
+  .pace-row > label,
+  .pace-row > span:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .plan-headline h2 {
+    font-size: 19px;
   }
 }

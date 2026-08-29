@@ -114,8 +114,15 @@ keeps it in the daily box.
 Two rules keep this from becoming a chore. **Due items always come back**, even
 if you have since unticked the group they live in — once you have started
 learning 日 it should not quietly disappear. **New items only come from your
-current selection**, at most 15 a day, so a fresh install is a manageable
-handful rather than 300 cards.
+current selection**, and only up to a budget you set, so a fresh install is a
+manageable handful rather than 300 cards.
+
+That budget is weekly rather than daily. A daily cap punishes exactly the person
+who told you they study four days a week: on the three days they said they would
+skip, the allowance expires unspent and the finish date never arrives. A week's
+budget spends the same total but lets it land on the days they are actually
+there — longer sessions, not a slower course. The trade-off is honest and worth
+knowing: come back after a week away and the whole week's allowance is waiting.
 
 Scheduling is per item, not per item-and-mode. Knowing 日 → "day" is admittedly
 not the same as knowing 日 → ニチ, but scheduling those separately triples the
@@ -125,6 +132,45 @@ exercised over the weeks.
 
 Practising a deck yourself never touches the schedule — drilling something ten
 times in an afternoon should not push its next review out a month.
+
+## How long it takes
+
+The plan screen asks two questions — how many new items a day, and how many days
+a week — and answers with a date.
+
+It is not a slogan. The pace you set there *is* the budget the reviews spend, so
+the date is a prediction of what the app will actually do rather than
+encouragement. Two properties of the boxes above do the work:
+
+- **Getting one item known takes a fixed run of days.** Introduced today, it
+  returns tomorrow, then three days later, and that third answer is what puts it
+  in box 3. Four days if you never miss it. Miss it and it drops to the bottom
+  and climbs again, so the estimate is paced on your own accuracy.
+- **A steady intake settles at a predictable load.** An item in box `b` waits
+  `BOX_INTERVALS[b]` days, so at `r` introductions a day exactly `r × interval`
+  items sit in that box and exactly `r` fall due each day. Every box below the
+  top therefore contributes `r` reviews a day whatever its interval — which is
+  why doubling the pace roughly doubles the session, and why the screen says so
+  before you commit.
+
+So the screen quotes the cost alongside the date: at 15 a day, seven days a
+week, that is about 110 cards a session and eight weeks; at 25 a day it is five
+weeks and 164 cards. Minutes come from timing your actual sessions rather than a
+guessed seconds-per-card, with a stated default standing in until there is
+enough of your own data to use.
+
+Reviews do not observe rest days — an item due on Thursday is still waiting on
+Saturday — so studying fewer days a week makes each sitting longer rather than
+making the week's work smaller. The screen says that too.
+
+Each of the eighteen stages gets its own projected date, worked in curriculum
+order with every item charged to the first stage that calls for it: the ます-form
+and て-form stages drill the same verbs, and the plan should not bill you twice
+for learning them.
+
+One thing it deliberately does not claim is that you will pass N5. It covers the
+843 items this app teaches, at the same 90% per stage the rest of the app uses.
+The exam also has listening and reading sections that no flashcard deck reaches.
 
 ## Counters, dates & times
 
@@ -365,13 +411,15 @@ src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
 src/lib/conjugate the conjugation rules
 src/lib/progress  what "known" means, and the numbers behind the dashboard
+src/lib/forecast  how long the plan takes at a given pace, and what it costs
 src/lib/curriculum  turning a stage into items, progress and a deck of cards
 src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, progress, the six setup screens, quiz, results
-tests/            romaji, session-engine, scheduling and storage tests
+src/i18n/         English and Dutch interface text, and the content fallback
+src/components/   home, plan, progress, the six setup screens, quiz, results
+tests/            romaji, session-engine, scheduling, forecast and storage tests
 scripts/          screenshot capture, and the JMdict cross-check
 ```
 

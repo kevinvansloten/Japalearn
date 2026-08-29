@@ -1,5 +1,30 @@
 import type { ReactNode } from 'react';
 import type { Flow, Order } from '../lib/session';
+import { BUNDLES, useLanguage, useStrings } from '../i18n';
+import { LANGS, type Lang } from '../i18n/lang';
+
+/**
+ * A formatter for a column of projected dates.
+ *
+ * Deciding per row whether to name the day or only the month makes the column
+ * lose precision partway down — "3 Nov" above "November 2026" reads as though
+ * the plan got vaguer as it went on. So the format is chosen once, from where
+ * the plan ends: the year appears only when the plan runs past this one.
+ */
+export function stageDateFormat(
+  finishesOn: number | null,
+  lang: Lang,
+  now = Date.now(),
+): (ms: number) => string {
+  const spansYears =
+    finishesOn !== null && new Date(finishesOn).getFullYear() !== new Date(now).getFullYear();
+  return (ms) =>
+    new Date(ms).toLocaleDateString(lang, {
+      day: 'numeric',
+      month: 'short',
+      ...(spansYears ? { year: 'numeric' } : {}),
+    });
+}
 
 export function SpeakerIcon({ size = 16 }: { size?: number }) {
   return (
@@ -128,11 +153,7 @@ export function ModeCard({
   );
 }
 
-const FLOW_OPTIONS: { value: Flow; label: string; blurb: string }[] = [
-  { value: 'once', label: 'One pass', blurb: 'Every card once, then a summary.' },
-  { value: 'mistakes', label: 'Repeat mistakes', blurb: 'Anything you miss comes back until you get it.' },
-  { value: 'endless', label: 'Endless', blurb: 'Keeps going, weak cards come round more often.' },
-];
+const FLOWS: Flow[] = ['once', 'mistakes', 'endless'];
 
 export function FlowPicker({
   flow,
@@ -145,28 +166,29 @@ export function FlowPicker({
   onFlow: (flow: Flow) => void;
   onOrder: (order: Order) => void;
 }) {
+  const s = useStrings();
   return (
-    <Panel title="How do you want to practise?">
+    <Panel title={s.flow.title}>
       <div className="mode-list">
-        {FLOW_OPTIONS.map((option) => (
+        {FLOWS.map((option) => (
           <ModeCard
-            key={option.value}
-            pressed={flow === option.value}
-            onClick={() => onFlow(option.value)}
-            title={option.label}
-            blurb={option.blurb}
+            key={option}
+            pressed={flow === option}
+            onClick={() => onFlow(option)}
+            title={s.flow.label[option]}
+            blurb={s.flow.blurb[option]}
           />
         ))}
       </div>
       {flow !== 'endless' && (
         <div className="row" style={{ marginTop: 14 }}>
-          <span className="hint">Order</span>
+          <span className="hint">{s.flow.order}</span>
           <Segmented
             value={order}
             onChange={onOrder}
             options={[
-              { value: 'ordered', label: 'In order' },
-              { value: 'shuffled', label: 'Shuffled' },
+              { value: 'ordered', label: s.flow.ordered },
+              { value: 'shuffled', label: s.flow.shuffled },
             ]}
           />
         </div>
@@ -182,14 +204,42 @@ export function SelectAll({
   all: () => void;
   none: () => void;
 }) {
+  const s = useStrings();
   return (
     <div className="row">
       <button type="button" className="btn ghost" onClick={all}>
-        Select all
+        {s.common.selectAll}
       </button>
       <button type="button" className="btn ghost" onClick={none}>
-        Clear
+        {s.common.clear}
       </button>
+    </div>
+  );
+}
+
+/**
+ * The language switch. Two letters rather than the language's full name: it
+ * lives in the top bar next to the title, where "Nederlands" would crowd out
+ * the app it belongs to. The full name is on the button for anyone who needs
+ * it read out or hovered.
+ */
+export function LanguagePicker() {
+  const { lang, setLang } = useLanguage();
+  const s = useStrings();
+  return (
+    <div className="segmented" role="group" aria-label={s.common.language}>
+      {LANGS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={lang === option}
+          aria-label={BUNDLES[option].name}
+          title={BUNDLES[option].name}
+          onClick={() => setLang(option)}
+        >
+          {option.toUpperCase()}
+        </button>
+      ))}
     </div>
   );
 }

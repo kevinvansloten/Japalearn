@@ -10,8 +10,6 @@ import {
   type ParticleSentence,
 } from '../data/particles';
 import {
-  ADJECTIVE_FORM_LABEL,
-  VERB_FORM_LABEL,
   conjugateAdjective,
   conjugateVerb,
   type AdjectiveForm,
@@ -22,6 +20,8 @@ import { ALL_KANA, type KanaEntry } from '../data/kana';
 import { ALL_KANJI, type KanjiEntry } from '../data/kanji';
 import { checkMeaning, checkReading, kanaToRomaji } from './romaji';
 import { shuffle, type Card, type Flow, type InputMode, type Order } from './session';
+import { en, type Strings } from '../i18n/en';
+import { meaningLang, meaningOf, meaningsOf, sentenceOf, whyOf } from '../i18n/content';
 
 const CHOICE_COUNT = 4;
 
@@ -47,6 +47,15 @@ function pickChoices(
 
 const exact = (answer: string) => (given: string) => given.trim() === answer;
 
+/**
+ * Every builder takes the strings it should write its cards in, defaulting to
+ * English. A card carries its own question, placeholder and revealed detail,
+ * so the language has to be decided when the deck is built rather than when it
+ * is rendered — and in the "name the form" mode the label is the graded answer
+ * itself, which makes this the difference between a card being right and being
+ * unanswerable.
+ */
+
 // ---------------------------------------------------------------- kana
 
 export type KanaScript = 'hira' | 'kata';
@@ -60,11 +69,6 @@ export interface KanaConfig {
   flow: Flow;
   order: Order;
 }
-
-export const SCRIPT_LABEL: Record<KanaScript, string> = {
-  hira: 'hiragana',
-  kata: 'katakana',
-};
 
 const glyph = (entry: KanaEntry, script: KanaScript): string =>
   script === 'hira' ? entry.hira : entry.kata;
@@ -81,7 +85,7 @@ export function kanaPool(config: KanaConfig): KanaEntry[] {
   return ALL_KANA.filter((k) => config.groupIds.includes(k.groupId));
 }
 
-export function buildKanaCards(config: KanaConfig): Card[] {
+export function buildKanaCards(config: KanaConfig, s: Strings = en): Card[] {
   const pool = kanaPool(config);
   const cards: Card[] = [];
 
@@ -97,7 +101,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
         cards.push({
           id: `kana-recognition-${script}-${entry.id}`,
           itemId: kanaItemId(script, entry),
-          question: 'Type the sound',
+          question: s.card.typeTheSound,
           prompt: shown,
           promptScript: 'jp',
           inputMode: 'type',
@@ -106,7 +110,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
           answer: entry.romaji,
           answerScript: 'latin',
           details: entry.alt.length
-            ? [...details, `also accepted: ${entry.alt.join(', ')}`]
+            ? [...details, s.card.alsoAccepted(entry.alt.join(', '))]
             : details,
           check: (given) => accepted.includes(given.trim().toLowerCase()),
         });
@@ -116,7 +120,7 @@ export function buildKanaCards(config: KanaConfig): Card[] {
         cards.push({
           id: `kana-recall-${script}-${entry.id}`,
           itemId: kanaItemId(script, entry),
-          question: `Pick the ${SCRIPT_LABEL[script]}`,
+          question: s.card.pickThe(s.script[script]),
           prompt: entry.romaji,
           promptScript: 'latin',
           inputMode: 'choice',
@@ -147,22 +151,6 @@ export interface KanjiConfig {
   order: Order;
 }
 
-export const KANJI_MODE_LABEL: Record<KanjiMode, string> = {
-  meaning: 'Kanji → meaning',
-  reading: 'Kanji → reading',
-  recall: 'Meaning → kanji',
-  vocab: 'Vocabulary word',
-  listening: 'Listening',
-};
-
-export const KANJI_MODE_BLURB: Record<KanjiMode, string> = {
-  meaning: 'See 日, answer “day / sun”.',
-  reading: 'See 日, answer any on or kun reading.',
-  recall: 'See “day / sun”, produce 日.',
-  vocab: 'See 日本, answer the reading にほん.',
-  listening: 'Hear にほん, write down what you heard.',
-};
-
 export function kanjiPool(config: KanjiConfig): KanjiEntry[] {
   return ALL_KANJI.filter(
     (k) => config.groupIds.includes(k.groupId) && !config.excluded.includes(k.char),
@@ -172,21 +160,25 @@ export function kanjiPool(config: KanjiConfig): KanjiEntry[] {
 /** The reading we show as "the" answer in multiple choice: on'yomi first. */
 const headReading = (k: KanjiEntry): string => k.on[0] ?? k.kun[0] ?? '';
 
-const readingDetails = (k: KanjiEntry): string[] => {
+const readingDetails = (k: KanjiEntry, s: Strings): string[] => {
   const lines: string[] = [];
-  if (k.on.length) lines.push(`on: ${k.on.join('、')}`);
-  if (k.kun.length) lines.push(`kun: ${k.kun.join('、')}`);
+  if (k.on.length) lines.push(s.card.on(k.on.join('、')));
+  if (k.kun.length) lines.push(s.card.kun(k.kun.join('、')));
   if (k.vocab.length) {
-    lines.push(k.vocab.map((w) => `${w.word} (${w.reading}) — ${w.meaning}`).join('　·　'));
+    lines.push(
+      k.vocab
+        .map((w) => `${w.word} (${w.reading}) — ${meaningOf(w, s.lang)}`)
+        .join('　·　'),
+    );
   }
   return lines;
 };
 
-export function buildKanjiCards(config: KanjiConfig): Card[] {
+export function buildKanjiCards(config: KanjiConfig, s: Strings = en): Card[] {
   const pool = kanjiPool(config);
   const cards: Card[] = [];
 
-  const meaningPool = pool.map((k) => k.meanings[0]);
+  const meaningPool = pool.map((k) => meaningsOf(k, s.lang)[0]);
   const charPool = pool.map((k) => k.char);
   const readingPool = pool.map(headReading).filter(Boolean);
   const vocabReadingPool = pool.flatMap((k) => k.vocab.map((w) => w.reading));
@@ -194,25 +186,24 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
 
   for (const k of pool) {
     const allReadings = [...k.on, ...k.kun];
+    const meanings = meaningsOf(k, s.lang);
 
     if (config.modes.includes('meaning')) {
       const choice = config.inputModes.meaning === 'choice';
       cards.push({
         id: `kanji-meaning-${k.char}`,
         itemId: `kanji:${k.char}`,
-        question: 'What does this mean?',
+        question: s.card.whatDoesThisMean,
         prompt: k.char,
         promptScript: 'jp',
         inputMode: config.inputModes.meaning,
-        placeholder: 'meaning in English',
+        placeholder: s.card.meaningPlaceholder(meaningLang(k, s.lang)),
         speech: k.vocab[0]?.reading,
-        choices: choice ? pickChoices(k.meanings[0], meaningPool) : undefined,
-        answer: k.meanings.join(' / '),
+        choices: choice ? pickChoices(meanings[0], meaningPool) : undefined,
+        answer: meanings.join(' / '),
         answerScript: 'latin',
-        details: readingDetails(k),
-        check: choice
-          ? exact(k.meanings[0])
-          : (given) => checkMeaning(given, k.meanings),
+        details: readingDetails(k, s),
+        check: choice ? exact(meanings[0]) : (given) => checkMeaning(given, meanings),
       });
     }
 
@@ -222,17 +213,17 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
       cards.push({
         id: `kanji-reading-${k.char}`,
         itemId: `kanji:${k.char}`,
-        question: choice ? 'Which reading belongs to this kanji?' : 'Type any reading (on or kun)',
+        question: choice ? s.card.whichReading : s.card.typeAnyReading,
         prompt: k.char,
         promptScript: 'jp',
-        promptNote: k.meanings[0],
+        promptNote: meanings[0],
         inputMode: config.inputModes.reading,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         speech: headReading(k),
         choices: choice ? pickChoices(head, readingPool) : undefined,
         answer: allReadings.join('、'),
         answerScript: 'jp',
-        details: readingDetails(k),
+        details: readingDetails(k, s),
         check: choice ? exact(head) : (given) => checkReading(given, allReadings),
       });
     }
@@ -242,16 +233,16 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
       cards.push({
         id: `kanji-recall-${k.char}`,
         itemId: `kanji:${k.char}`,
-        question: choice ? 'Which kanji is this?' : 'Write the kanji (needs a Japanese IME)',
-        prompt: k.meanings.join(' / '),
+        question: choice ? s.card.whichKanji : s.card.writeTheKanji,
+        prompt: meanings.join(' / '),
         promptScript: 'latin',
         inputMode: config.inputModes.recall,
-        placeholder: 'the kanji',
+        placeholder: s.card.theKanji,
         speech: k.vocab[0]?.reading,
         choices: choice ? pickChoices(k.char, charPool, KANJI_LOOKALIKES) : undefined,
         answer: k.char,
         answerScript: 'jp',
-        details: readingDetails(k),
+        details: readingDetails(k, s),
         check: exact(k.char),
       });
     }
@@ -262,16 +253,16 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
         cards.push({
           id: `kanji-vocab-${k.char}-${word.word}`,
           itemId: `vocab:${word.word}`,
-          question: choice ? 'How is this word read?' : 'Type the reading of this word',
+          question: choice ? s.card.howIsWordRead : s.card.typeWordReading,
           prompt: word.word,
           promptScript: 'jp',
           inputMode: config.inputModes.vocab,
-          placeholder: 'romaji or kana',
+          placeholder: s.card.romajiOrKana,
           speech: word.reading,
           choices: choice ? pickChoices(word.reading, vocabReadingPool) : undefined,
           answer: `${word.reading} (${kanaToRomaji(word.reading)})`,
           answerScript: 'jp',
-          details: [`${word.word} — ${word.meaning}`, ...readingDetails(k)],
+          details: [`${word.word} — ${meaningOf(word, s.lang)}`, ...readingDetails(k, s)],
           check: choice ? exact(word.reading) : (given) => checkReading(given, [word.reading]),
         });
       }
@@ -283,17 +274,17 @@ export function buildKanjiCards(config: KanjiConfig): Card[] {
         cards.push({
           id: `kanji-listening-${k.char}-${word.word}`,
           itemId: `vocab:${word.word}`,
-          question: choice ? 'Which word did you hear?' : 'Write down what you hear',
+          question: choice ? s.card.whichWordHeard : s.card.writeWhatYouHear,
           // The audio is the question, so there is nothing to show.
           prompt: '',
           promptScript: 'audio',
           speech: word.reading,
           inputMode: config.inputModes.listening,
-          placeholder: 'romaji or kana',
+          placeholder: s.card.romajiOrKana,
           choices: choice ? pickChoices(word.word, vocabWordPool) : undefined,
           answer: `${word.word}　${word.reading}`,
           answerScript: 'jp',
-          details: [`${word.word} (${word.reading}) — ${word.meaning}`],
+          details: [`${word.word} (${word.reading}) — ${meaningOf(word, s.lang)}`],
           check: choice ? exact(word.word) : (given) => checkReading(given, [word.reading]),
         });
       }
@@ -317,58 +308,47 @@ export interface CounterConfig {
   order: Order;
 }
 
-export const COUNTER_MODE_LABEL: Record<CounterMode, string> = {
-  reading: 'Written → reading',
-  meaning: 'Written → meaning',
-  listening: 'Listening',
-};
-
-export const COUNTER_MODE_BLURB: Record<CounterMode, string> = {
-  reading: 'See 六本, answer ろっぽん. This is where the sound changes live.',
-  meaning: 'See 二十歳, answer “twenty years old”.',
-  listening: 'Hear ろっぽん, work out which one it was.',
-};
-
 export function counterPool(config: CounterConfig): CounterItem[] {
   return ALL_COUNTERS.filter(
     (c) => config.groupIds.includes(c.groupId) && !config.excluded.includes(c.form),
   );
 }
 
-const counterDetails = (item: CounterItem): string[] => {
-  const lines = [`${item.form}（${item.reading}）— ${item.meaning}`];
-  if (item.alt?.length) lines.push(`also read ${item.alt.join('、')}`);
-  if (item.irregular) lines.push('⚠ the reading shifts here — worth noting');
+const counterDetails = (item: CounterItem, s: Strings): string[] => {
+  const lines = [`${item.form}（${item.reading}）— ${meaningOf(item, s.lang)}`];
+  if (item.alt?.length) lines.push(s.card.alsoRead(item.alt.join('、')));
+  if (item.irregular) lines.push(s.card.soundShifts);
   return lines;
 };
 
-export function buildCounterCards(config: CounterConfig): Card[] {
+export function buildCounterCards(config: CounterConfig, s: Strings = en): Card[] {
   const pool = counterPool(config);
   const cards: Card[] = [];
 
   const readingPool = pool.map((c) => c.reading);
-  const meaningPool = pool.map((c) => c.meaning);
+  const meaningPool = pool.map((c) => meaningOf(c, s.lang));
   const formPool = pool.map((c) => c.form);
 
   for (const item of pool) {
     const accepted = [item.reading, ...(item.alt ?? [])];
+    const meaning = meaningOf(item, s.lang);
 
     if (config.modes.includes('reading')) {
       const choice = config.inputModes.reading === 'choice';
       cards.push({
         id: `counter-reading-${item.form}`,
         itemId: `counter:${item.form}`,
-        question: choice ? 'How is this read?' : 'Type the reading',
+        question: choice ? s.card.howIsThisRead : s.card.typeTheReading,
         prompt: item.form,
         promptScript: 'jp',
-        promptNote: item.meaning,
+        promptNote: meaning,
         inputMode: config.inputModes.reading,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         speech: item.reading,
         choices: choice ? pickChoices(item.reading, readingPool) : undefined,
         answer: `${item.reading}（${kanaToRomaji(item.reading)}）`,
         answerScript: 'jp',
-        details: counterDetails(item),
+        details: counterDetails(item, s),
         check: choice
           ? exact(item.reading)
           : (given) => checkReading(given, accepted),
@@ -380,17 +360,17 @@ export function buildCounterCards(config: CounterConfig): Card[] {
       cards.push({
         id: `counter-meaning-${item.form}`,
         itemId: `counter:${item.form}`,
-        question: 'What does this mean?',
+        question: s.card.whatDoesThisMean,
         prompt: item.form,
         promptScript: 'jp',
         inputMode: config.inputModes.meaning,
-        placeholder: 'meaning in English',
+        placeholder: s.card.meaningPlaceholder(meaningLang(item, s.lang)),
         speech: item.reading,
-        choices: choice ? pickChoices(item.meaning, meaningPool) : undefined,
-        answer: item.meaning,
+        choices: choice ? pickChoices(meaning, meaningPool) : undefined,
+        answer: meaning,
         answerScript: 'latin',
-        details: counterDetails(item),
-        check: choice ? exact(item.meaning) : (given) => checkMeaning(given, [item.meaning]),
+        details: counterDetails(item, s),
+        check: choice ? exact(meaning) : (given) => checkMeaning(given, [meaning]),
       });
     }
 
@@ -399,16 +379,16 @@ export function buildCounterCards(config: CounterConfig): Card[] {
       cards.push({
         id: `counter-listening-${item.form}`,
         itemId: `counter:${item.form}`,
-        question: choice ? 'Which one did you hear?' : 'Write down what you hear',
+        question: choice ? s.card.whichOneHeard : s.card.writeWhatYouHear,
         prompt: '',
         promptScript: 'audio',
         speech: item.reading,
         inputMode: config.inputModes.listening,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         choices: choice ? pickChoices(item.form, formPool) : undefined,
         answer: `${item.form}　${item.reading}`,
         answerScript: 'jp',
-        details: counterDetails(item),
+        details: counterDetails(item, s),
         check: choice ? exact(item.form) : (given) => checkReading(given, accepted),
       });
     }
@@ -431,47 +411,27 @@ export interface WordConfig {
   order: Order;
 }
 
-export const WORD_MODE_LABEL: Record<WordMode, string> = {
-  meaning: 'Word → meaning',
-  reading: 'Word → reading',
-  recall: 'Meaning → word',
-  listening: 'Listening',
-};
-
-export const WORD_MODE_BLURB: Record<WordMode, string> = {
-  meaning: 'See 手紙, answer “letter”.',
-  reading: 'See 手紙, answer てがみ. Skipped for words already written in kana.',
-  recall: 'See “letter”, pick 手紙 out of four.',
-  listening: 'Hear てがみ, work out which word it was.',
-};
-
 export function wordPool(config: WordConfig): WordEntry[] {
   return ALL_WORDS.filter(
     (w) => config.groupIds.includes(w.groupId) && !config.excluded.includes(w.word),
   );
 }
 
-const KIND_LABEL: Record<WordEntry['kind'], string> = {
-  noun: 'noun',
-  verb: 'verb',
-  adjective: 'adjective',
-  adverb: 'adverb',
-  expression: 'expression',
-  pronoun: 'pronoun',
+const wordDetails = (entry: WordEntry, s: Strings): string[] => {
+  const meanings = meaningsOf(entry, s.lang).join(', ');
+  return [
+    hasKanji(entry)
+      ? `${entry.word}（${entry.reading}）— ${meanings}`
+      : `${entry.word} — ${meanings}`,
+    s.wordKind[entry.kind],
+  ];
 };
 
-const wordDetails = (entry: WordEntry): string[] => [
-  hasKanji(entry)
-    ? `${entry.word}（${entry.reading}）— ${entry.meanings.join(', ')}`
-    : `${entry.word} — ${entry.meanings.join(', ')}`,
-  KIND_LABEL[entry.kind],
-];
-
-export function buildWordCards(config: WordConfig): Card[] {
+export function buildWordCards(config: WordConfig, s: Strings = en): Card[] {
   const pool = wordPool(config);
   const cards: Card[] = [];
 
-  const meaningPool = pool.map((w) => w.meanings[0]);
+  const meaningPool = pool.map((w) => meaningsOf(w, s.lang)[0]);
   const wordPoolText = pool.map((w) => w.word);
   const readingPool = pool.filter(hasKanji).map((w) => w.reading);
 
@@ -479,25 +439,24 @@ export function buildWordCards(config: WordConfig): Card[] {
     // The kanji deck already tracks its example words under this key, so a word
     // learned there and here shares one schedule rather than being asked twice.
     const itemId = `vocab:${entry.word}`;
+    const meanings = meaningsOf(entry, s.lang);
 
     if (config.modes.includes('meaning')) {
       const choice = config.inputModes.meaning === 'choice';
       cards.push({
         id: `word-meaning-${entry.word}`,
         itemId,
-        question: 'What does this mean?',
+        question: s.card.whatDoesThisMean,
         prompt: entry.word,
         promptScript: 'jp',
         inputMode: config.inputModes.meaning,
-        placeholder: 'meaning in English',
+        placeholder: s.card.meaningPlaceholder(meaningLang(entry, s.lang)),
         speech: entry.reading,
-        choices: choice ? pickChoices(entry.meanings[0], meaningPool) : undefined,
-        answer: entry.meanings.join(' / '),
+        choices: choice ? pickChoices(meanings[0], meaningPool) : undefined,
+        answer: meanings.join(' / '),
         answerScript: 'latin',
-        details: wordDetails(entry),
-        check: choice
-          ? exact(entry.meanings[0])
-          : (given) => checkMeaning(given, entry.meanings),
+        details: wordDetails(entry, s),
+        check: choice ? exact(meanings[0]) : (given) => checkMeaning(given, meanings),
       });
     }
 
@@ -507,17 +466,17 @@ export function buildWordCards(config: WordConfig): Card[] {
       cards.push({
         id: `word-reading-${entry.word}`,
         itemId,
-        question: choice ? 'How is this read?' : 'Type the reading',
+        question: choice ? s.card.howIsThisRead : s.card.typeTheReading,
         prompt: entry.word,
         promptScript: 'jp',
-        promptNote: entry.meanings[0],
+        promptNote: meanings[0],
         inputMode: config.inputModes.reading,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         speech: entry.reading,
         choices: choice ? pickChoices(entry.reading, readingPool) : undefined,
         answer: `${entry.reading}（${kanaToRomaji(entry.reading)}）`,
         answerScript: 'jp',
-        details: wordDetails(entry),
+        details: wordDetails(entry, s),
         check: choice ? exact(entry.reading) : (given) => checkReading(given, [entry.reading]),
       });
     }
@@ -527,16 +486,16 @@ export function buildWordCards(config: WordConfig): Card[] {
       cards.push({
         id: `word-recall-${entry.word}`,
         itemId,
-        question: choice ? 'Which word is this?' : 'Write the word (needs a Japanese IME)',
-        prompt: entry.meanings.join(' / '),
+        question: choice ? s.card.whichWord : s.card.writeTheWord,
+        prompt: meanings.join(' / '),
         promptScript: 'latin',
         inputMode: config.inputModes.recall,
-        placeholder: 'the word',
+        placeholder: s.card.theWord,
         speech: entry.reading,
         choices: choice ? pickChoices(entry.word, wordPoolText) : undefined,
         answer: entry.word,
         answerScript: 'jp',
-        details: wordDetails(entry),
+        details: wordDetails(entry, s),
         check: exact(entry.word),
       });
     }
@@ -546,16 +505,16 @@ export function buildWordCards(config: WordConfig): Card[] {
       cards.push({
         id: `word-listening-${entry.word}`,
         itemId,
-        question: choice ? 'Which word did you hear?' : 'Write down what you hear',
+        question: choice ? s.card.whichWordHeard : s.card.writeWhatYouHear,
         prompt: '',
         promptScript: 'audio',
         speech: entry.reading,
         inputMode: config.inputModes.listening,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         choices: choice ? pickChoices(entry.word, wordPoolText) : undefined,
         answer: hasKanji(entry) ? `${entry.word}　${entry.reading}` : entry.word,
         answerScript: 'jp',
-        details: wordDetails(entry),
+        details: wordDetails(entry, s),
         check: choice ? exact(entry.word) : (given) => checkReading(given, [entry.reading]),
       });
     }
@@ -580,18 +539,6 @@ export interface ConjugationConfig {
   order: Order;
 }
 
-export const CONJUGATION_MODE_LABEL: Record<ConjugationMode, string> = {
-  produce: 'Produce the form',
-  identify: 'Name the form',
-  dictionary: 'Back to the dictionary form',
-};
-
-export const CONJUGATION_MODE_BLURB: Record<ConjugationMode, string> = {
-  produce: 'See 書く and “て-form”, answer 書いて.',
-  identify: 'See 書いて, work out which form it is.',
-  dictionary: 'See 書きました, answer 書く.',
-};
-
 /** A dictionary entry paired with one of its conjugated forms. */
 interface Inflection {
   dictionary: Conjugated;
@@ -603,10 +550,10 @@ interface Inflection {
   siblingLabels: string[];
 }
 
-function inflectionsFor(config: ConjugationConfig): Inflection[] {
+function inflectionsFor(config: ConjugationConfig, s: Strings): Inflection[] {
   const out: Inflection[] = [];
-  const verbLabels = config.verbForms.map((f) => VERB_FORM_LABEL[f]);
-  const adjectiveLabels = config.adjectiveForms.map((f) => ADJECTIVE_FORM_LABEL[f]);
+  const verbLabels = config.verbForms.map((f) => s.verbForm[f]);
+  const adjectiveLabels = config.adjectiveForms.map((f) => s.adjectiveForm[f]);
 
   for (const entry of ALL_VERBS) {
     if (!config.groupIds.includes(entry.groupId) || config.excluded.includes(entry.word)) continue;
@@ -614,9 +561,9 @@ function inflectionsFor(config: ConjugationConfig): Inflection[] {
     for (const form of config.verbForms) {
       out.push({
         dictionary,
-        meaning: entry.meaning,
+        meaning: meaningOf(entry, s.lang),
         formId: form,
-        formLabel: VERB_FORM_LABEL[form],
+        formLabel: s.verbForm[form],
         conjugated: conjugateVerb(dictionary, entry.verbClass, form, entry.overrides),
         siblingLabels: verbLabels,
       });
@@ -629,9 +576,9 @@ function inflectionsFor(config: ConjugationConfig): Inflection[] {
     for (const form of config.adjectiveForms) {
       out.push({
         dictionary,
-        meaning: entry.meaning,
+        meaning: meaningOf(entry, s.lang),
         formId: form,
-        formLabel: ADJECTIVE_FORM_LABEL[form],
+        formLabel: s.adjectiveForm[form],
         conjugated: conjugateAdjective(dictionary, entry.adjectiveClass, form, entry.overrides),
         siblingLabels: adjectiveLabels,
       });
@@ -647,8 +594,8 @@ const acceptForm = (target: Conjugated) => (given: string) => {
   return answer === target.word || checkReading(answer, [target.reading]);
 };
 
-export function buildConjugationCards(config: ConjugationConfig): Card[] {
-  const inflections = inflectionsFor(config);
+export function buildConjugationCards(config: ConjugationConfig, s: Strings = en): Card[] {
+  const inflections = inflectionsFor(config, s);
   const cards: Card[] = [];
 
   const conjugatedPool = inflections.map((i) => i.conjugated.word);
@@ -666,12 +613,12 @@ export function buildConjugationCards(config: ConjugationConfig): Card[] {
       cards.push({
         id: `conj-produce-${item.dictionary.word}-${item.formId}`,
         itemId,
-        question: choice ? 'Pick the right form' : 'Write this form',
+        question: choice ? s.card.pickTheForm : s.card.writeThisForm,
         prompt: item.dictionary.word,
         promptScript: 'jp',
         promptNote: item.formLabel,
         inputMode: config.inputModes.produce,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         speech: item.conjugated.reading,
         choices: choice ? pickChoices(item.conjugated.word, conjugatedPool) : undefined,
         answer: `${item.conjugated.word}（${item.conjugated.reading}）`,
@@ -685,7 +632,7 @@ export function buildConjugationCards(config: ConjugationConfig): Card[] {
       cards.push({
         id: `conj-identify-${item.dictionary.word}-${item.formId}`,
         itemId,
-        question: 'Which form is this?',
+        question: s.card.whichForm,
         prompt: item.conjugated.word,
         promptScript: 'jp',
         promptNote: item.meaning,
@@ -705,12 +652,12 @@ export function buildConjugationCards(config: ConjugationConfig): Card[] {
       cards.push({
         id: `conj-dictionary-${item.dictionary.word}-${item.formId}`,
         itemId,
-        question: choice ? 'Which is the dictionary form?' : 'Write the dictionary form',
+        question: choice ? s.card.whichDictionaryForm : s.card.writeDictionaryForm,
         prompt: item.conjugated.word,
         promptScript: 'jp',
         promptNote: item.formLabel,
         inputMode: config.inputModes.dictionary,
-        placeholder: 'romaji or kana',
+        placeholder: s.card.romajiOrKana,
         speech: item.dictionary.reading,
         choices: choice ? pickChoices(item.dictionary.word, dictionaryPool) : undefined,
         answer: `${item.dictionary.word}（${item.dictionary.reading}）`,
@@ -741,7 +688,7 @@ export function particlePool(config: ParticleConfig): ParticleSentence[] {
   );
 }
 
-export function buildParticleCards(config: ParticleConfig): Card[] {
+export function buildParticleCards(config: ParticleConfig, s: Strings = en): Card[] {
   return particlePool(config).map((sentence) => {
     const accepted = acceptedFor(sentence);
     const choice = config.inputMode === 'choice';
@@ -751,25 +698,25 @@ export function buildParticleCards(config: ParticleConfig): Card[] {
     const distractorPool = PARTICLES.filter((p) => !accepted.includes(p));
 
     const alsoNote = sentence.alsoAccepted?.length
-      ? `${sentence.alsoAccepted.join('、')} also works here.`
+      ? s.card.alsoWorks(sentence.alsoAccepted.join('、'))
       : null;
 
     return {
       id: `particle-${sentence.text}`,
       itemId: `particle:${sentence.text}`,
-      question: 'Which particle belongs in the gap?',
+      question: s.card.whichParticle,
       prompt: sentence.text,
       promptScript: 'jp',
-      promptNote: sentence.english,
+      promptNote: sentenceOf(sentence, s.lang),
       inputMode: config.inputMode,
-      placeholder: 'the particle',
+      placeholder: s.card.theParticle,
       speech: filled(sentence),
       choices: choice
         ? shuffle([sentence.answer, ...shuffle(distractorPool).slice(0, CHOICE_COUNT - 1)])
         : undefined,
       answer: accepted.join(' / '),
       answerScript: 'jp',
-      details: [filled(sentence), sentence.why, ...(alsoNote ? [alsoNote] : [])],
+      details: [filled(sentence), whyOf(sentence, s.lang), ...(alsoNote ? [alsoNote] : [])],
       // Typed answers accept kana directly; particles are too short for romaji
       // conversion to be worth the ambiguity.
       check: (given: string) => accepted.includes(given.trim()),

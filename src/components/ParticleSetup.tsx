@@ -1,6 +1,8 @@
 import { PARTICLE_GROUPS } from '../data/particles';
 import { buildParticleCards, particlePool, type ParticleConfig } from '../lib/buildCards';
 import type { Card, InputMode } from '../lib/session';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, sentenceOf } from '../i18n/content';
 import { Chip, FlowPicker, Panel, Segmented, SelectAll } from './ui';
 
 function toggle<T>(list: T[], value: T): T[] {
@@ -15,16 +17,17 @@ interface Props {
 }
 
 export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<ParticleConfig>) => onChange({ ...config, ...update });
 
-  const cards = buildParticleCards(config);
+  const cards = buildParticleCards(config, s);
   const ready = cards.length > 0;
   const selected = particlePool(config);
 
   const setGroupSentences = (groupId: string, include: boolean) => {
     const group = PARTICLE_GROUPS.find((g) => g.id === groupId);
     if (!group) return;
-    const texts = group.sentences.map((s) => s.text);
+    const texts = group.sentences.map((sentence) => sentence.text);
     patch({
       excluded: include
         ? config.excluded.filter((t) => !texts.includes(t))
@@ -36,17 +39,17 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Particles</strong>
-          <div className="faint">{selected.length} sentences</div>
+          <strong>{s.deck.particles}</strong>
+          <div className="faint">{s.setup.sentenceCount(selected.length)}</div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
       <Panel
-        title="Which particles?"
-        hint="Grouped by what the particle does, since that is what decides which one a sentence takes."
+        title={s.setup.whichParticles}
+        hint={s.setup.whichParticlesHint}
         aside={
           <SelectAll
             all={() => patch({ groupIds: PARTICLE_GROUPS.map((g) => g.id), excluded: [] })}
@@ -56,7 +59,9 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
       >
         {PARTICLE_GROUPS.map((group) => {
           const on = config.groupIds.includes(group.id);
-          const included = group.sentences.filter((s) => !config.excluded.includes(s.text)).length;
+          const included = group.sentences.filter(
+            (sentence) => !config.excluded.includes(sentence.text),
+          ).length;
           return (
             <div className="group-block" key={group.id}>
               <div className="group-head">
@@ -65,10 +70,10 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
                     pressed={on}
                     onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
                   >
-                    {group.label} · {included}/{group.sentences.length}
+                    {labelOf(group, s.lang)} · {included}/{group.sentences.length}
                   </Chip>
                   <div className="hint" style={{ marginTop: 4 }}>
-                    {group.blurb}
+                    {blurbOf(group, s.lang)}
                   </div>
                 </div>
                 {on && (
@@ -87,7 +92,7 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
                       type="button"
                       className="sentence-toggle"
                       aria-pressed={!config.excluded.includes(sentence.text)}
-                      title={sentence.english}
+                      title={sentenceOf(sentence, s.lang)}
                       onClick={() => patch({ excluded: toggle(config.excluded, sentence.text) })}
                     >
                       {sentence.text}
@@ -100,21 +105,19 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
         })}
       </Panel>
 
-      <Panel title="How should you answer?">
+      <Panel title={s.setup.howAnswer}>
         <div className="row">
           <Segmented<InputMode>
             value={config.inputMode}
             onChange={(inputMode) => patch({ inputMode })}
             options={[
-              { value: 'choice', label: 'Choose' },
-              { value: 'type', label: 'Type' },
+              { value: 'choice', label: s.common.choose },
+              { value: 'type', label: s.common.type },
             ]}
           />
         </div>
         <p className="faint" style={{ marginTop: 10 }}>
-          Some sentences take more than one particle — 学校に行きます and 学校へ行きます are both
-          right. Typing accepts either; multiple choice only ever offers one of them, so there is
-          always exactly one correct option on screen.
+          {s.setup.particleNote}
         </p>
       </Panel>
 
@@ -132,7 +135,7 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
           disabled={!ready}
           onClick={() => onStart(cards)}
         >
-          {ready ? `Start — ${cards.length} sentences` : 'Pick at least one group'}
+          {ready ? s.setup.startSentences(cards.length) : s.setup.pickAGroup}
         </button>
       </div>
     </div>

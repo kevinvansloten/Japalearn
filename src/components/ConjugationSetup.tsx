@@ -1,18 +1,13 @@
 import { CONJUGATION_GROUPS } from '../data/conjugation';
 import {
-  CONJUGATION_MODE_BLURB,
-  CONJUGATION_MODE_LABEL,
   buildConjugationCards,
   type ConjugationConfig,
   type ConjugationMode,
 } from '../lib/buildCards';
-import {
-  ADJECTIVE_FORMS,
-  ADJECTIVE_FORM_LABEL,
-  VERB_FORMS,
-  VERB_FORM_LABEL,
-} from '../lib/conjugate';
+import { ADJECTIVE_FORMS, VERB_FORMS } from '../lib/conjugate';
 import type { Card, InputMode } from '../lib/session';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, meaningOf } from '../i18n/content';
 import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
 
 const MODES: ConjugationMode[] = ['produce', 'identify', 'dictionary'];
@@ -29,9 +24,10 @@ interface Props {
 }
 
 export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<ConjugationConfig>) => onChange({ ...config, ...update });
 
-  const cards = buildConjugationCards(config);
+  const cards = buildConjugationCards(config, s);
   const ready = cards.length > 0;
 
   const selectedGroups = CONJUGATION_GROUPS.filter((g) => config.groupIds.includes(g.id));
@@ -53,17 +49,17 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Conjugation</strong>
-          <div className="faint">{cards.length} cards</div>
+          <strong>{s.deck.conjugation}</strong>
+          <div className="faint">{s.setup.cardCount(cards.length)}</div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
       <Panel
-        title="Which words?"
-        hint="Verb classes decide how a word conjugates, so they make the natural groups."
+        title={s.setup.whichConjugation}
+        hint={s.setup.whichConjugationHint}
         aside={
           <SelectAll
             all={() => patch({ groupIds: CONJUGATION_GROUPS.map((g) => g.id), excluded: [] })}
@@ -83,10 +79,10 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
                     pressed={on}
                     onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
                   >
-                    {group.label} · {included}/{words.length}
+                    {labelOf(group, s.lang)} · {included}/{words.length}
                   </Chip>
                   <div className="hint" style={{ marginTop: 4 }}>
-                    {group.blurb}
+                    {blurbOf(group, s.lang)}
                   </div>
                 </div>
                 {on && (
@@ -105,7 +101,7 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
                       type="button"
                       className="item-toggle"
                       aria-pressed={!config.excluded.includes(entry.word)}
-                      title={`${entry.word} (${entry.reading}) — ${entry.meaning}`}
+                      title={`${entry.word} (${entry.reading}) — ${meaningOf(entry, s.lang)}`}
                       onClick={() => patch({ excluded: toggle(config.excluded, entry.word) })}
                     >
                       {entry.word}
@@ -118,11 +114,11 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
         })}
       </Panel>
 
-      <Panel title="Which forms?" hint="Drill one form until it is automatic, or mix them.">
+      <Panel title={s.setup.whichForms} hint={s.setup.whichFormsHint}>
         {hasVerbs && (
           <>
             <div className="group-head">
-              <h3>Verbs</h3>
+              <h3>{s.setup.verbs}</h3>
               <SelectAll
                 all={() => patch({ verbForms: [...VERB_FORMS] })}
                 none={() => patch({ verbForms: ['te'] })}
@@ -138,7 +134,7 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
                     if (next.length) patch({ verbForms: next });
                   }}
                 >
-                  {VERB_FORM_LABEL[form]}
+                  {s.verbForm[form]}
                 </Chip>
               ))}
             </div>
@@ -148,7 +144,7 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
         {hasAdjectives && (
           <>
             <div className="group-head">
-              <h3>Adjectives</h3>
+              <h3>{s.setup.adjectives}</h3>
               <SelectAll
                 all={() => patch({ adjectiveForms: [...ADJECTIVE_FORMS] })}
                 none={() => patch({ adjectiveForms: ['negative'] })}
@@ -164,19 +160,17 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
                     if (next.length) patch({ adjectiveForms: next });
                   }}
                 >
-                  {ADJECTIVE_FORM_LABEL[form]}
+                  {s.adjectiveForm[form]}
                 </Chip>
               ))}
             </div>
           </>
         )}
 
-        {!hasVerbs && !hasAdjectives && (
-          <p className="hint">Pick a group above and its forms will appear here.</p>
-        )}
+        {!hasVerbs && !hasAdjectives && <p className="hint">{s.setup.pickAGroupFirst}</p>}
       </Panel>
 
-      <Panel title="How should you be asked?" hint="Pick any combination.">
+      <Panel title={s.setup.howAsked} hint={s.setup.anyCombination}>
         <div className="mode-list">
           {MODES.map((mode) => (
             <ModeCard
@@ -186,8 +180,8 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
                 const next = toggle(config.modes, mode);
                 if (next.length) patch({ modes: next });
               }}
-              title={CONJUGATION_MODE_LABEL[mode]}
-              blurb={CONJUGATION_MODE_BLURB[mode]}
+              title={s.conjugationMode.label[mode]}
+              blurb={s.conjugationMode.blurb[mode]}
               aside={
                 mode === 'identify' ? undefined : (
                   <Segmented<InputMode>
@@ -196,8 +190,8 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
                       patch({ inputModes: { ...config.inputModes, [mode]: value } })
                     }
                     options={[
-                      { value: 'type', label: 'Type' },
-                      { value: 'choice', label: 'Choose' },
+                      { value: 'type', label: s.common.type },
+                      { value: 'choice', label: s.common.choose },
                     ]}
                   />
                 )
@@ -206,8 +200,7 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
           ))}
         </div>
         <p className="faint" style={{ marginTop: 10 }}>
-          Typed answers accept romaji, kana or the written form — かいて, kaite and 書いて all
-          count.
+          {s.setup.conjugationInputNote}
         </p>
       </Panel>
 
@@ -225,7 +218,7 @@ export function ConjugationSetup({ config, onChange, onStart, onHome }: Props) {
           disabled={!ready}
           onClick={() => onStart(cards)}
         >
-          {ready ? `Start — ${cards.length} cards` : 'Pick at least one group'}
+          {ready ? s.setup.start(cards.length) : s.setup.pickAGroup}
         </button>
       </div>
     </div>

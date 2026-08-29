@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { COUNTER_GROUPS } from '../data/counters';
 import {
-  COUNTER_MODE_BLURB,
-  COUNTER_MODE_LABEL,
   buildCounterCards,
   counterPool,
   type CounterConfig,
@@ -11,6 +9,8 @@ import {
 import type { Card, InputMode } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, meaningOf } from '../i18n/content';
 import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
 
 const MODES: CounterMode[] = ['reading', 'meaning', 'listening'];
@@ -34,6 +34,7 @@ interface Props {
 }
 
 export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<CounterConfig>) => onChange({ ...config, ...update });
   const stats = useMemo(() => loadItemStats(), []);
   const hasVoice = useJapaneseVoice();
@@ -43,7 +44,7 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
   const selected = counterPool(usable).length;
-  const cards = buildCounterCards(usable);
+  const cards = buildCounterCards(usable, s);
   const ready = cards.length > 0;
 
   const setGroupItems = (groupId: string, include: boolean) => {
@@ -61,19 +62,17 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Counters, dates &amp; times</strong>
-          <div className="faint">
-            {selected} selected · {cards.length} cards
-          </div>
+          <strong>{s.deck.counters}</strong>
+          <div className="faint">{s.setup.countersSelected(selected, cards.length)}</div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
       <Panel
-        title="What do you want to drill?"
-        hint="Turn on the sets you are working on, then switch off anything you already have."
+        title={s.setup.whatToDrill}
+        hint={s.setup.whatToDrillHint}
         aside={
           <SelectAll
             all={() => patch({ groupIds: COUNTER_GROUPS.map((g) => g.id), excluded: [] })}
@@ -92,10 +91,10 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
                     pressed={on}
                     onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
                   >
-                    {group.label} · {included}/{group.items.length}
+                    {labelOf(group, s.lang)} · {included}/{group.items.length}
                   </Chip>
                   <div className="hint" style={{ marginTop: 4 }}>
-                    {group.blurb}
+                    {blurbOf(group, s.lang)}
                   </div>
                 </div>
                 {on && (
@@ -117,7 +116,7 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
                         type="button"
                         className="item-toggle"
                         aria-pressed={isIncluded}
-                        title={`${item.form} (${item.reading}) — ${item.meaning}`}
+                        title={`${item.form} (${item.reading}) — ${meaningOf(item, s.lang)}`}
                         onClick={() => patch({ excluded: toggle(config.excluded, item.form) })}
                       >
                         {item.form}
@@ -132,11 +131,11 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
           );
         })}
         <p className="faint" style={{ marginTop: 12 }}>
-          A dash above an item marks a sound change — 六本 rather than 六ほん.
+          {s.setup.irregularNote}
         </p>
       </Panel>
 
-      <Panel title="How should you be asked?" hint="Pick any combination.">
+      <Panel title={s.setup.howAsked} hint={s.setup.anyCombination}>
         <div className="mode-list">
           {MODES.map((mode) => (
             <ModeCard
@@ -147,11 +146,9 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
                 const next = toggle(config.modes, mode);
                 if (next.length) patch({ modes: next });
               }}
-              title={COUNTER_MODE_LABEL[mode]}
+              title={s.counterMode.label[mode]}
               blurb={
-                mode === 'listening' && !hasVoice
-                  ? 'Needs a Japanese voice installed on this device.'
-                  : COUNTER_MODE_BLURB[mode]
+                mode === 'listening' && !hasVoice ? s.setup.needsVoice : s.counterMode.blurb[mode]
               }
               aside={
                 <Segmented<InputMode>
@@ -160,8 +157,8 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
                     patch({ inputModes: { ...config.inputModes, [mode]: value } })
                   }
                   options={[
-                    { value: 'type', label: 'Type' },
-                    { value: 'choice', label: 'Choose' },
+                    { value: 'type', label: s.common.type },
+                    { value: 'choice', label: s.common.choose },
                   ]}
                 />
               }
@@ -184,7 +181,7 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
           disabled={!ready}
           onClick={() => onStart(cards)}
         >
-          {ready ? `Start — ${cards.length} cards` : 'Pick at least one set'}
+          {ready ? s.setup.start(cards.length) : s.setup.pickASet}
         </button>
       </div>
     </div>

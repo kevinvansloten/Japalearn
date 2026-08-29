@@ -22,6 +22,8 @@ export interface VerbEntry {
   word: string;
   reading: string;
   meaning: string;
+  /** the same in Dutch, where it has been written; see MEANINGS_NL */
+  meaningNl?: string;
   verbClass: VerbClass;
   /** forms the rules cannot produce */
   overrides?: Partial<Record<VerbForm, Conjugated>>;
@@ -32,6 +34,7 @@ export interface AdjectiveEntry {
   word: string;
   reading: string;
   meaning: string;
+  meaningNl?: string;
   adjectiveClass: AdjectiveClass;
   overrides?: Partial<Record<AdjectiveForm, Conjugated>>;
   groupId: string;
@@ -160,61 +163,89 @@ const NA_ADJ: AdjRow[] = [
 export interface ConjugationGroup {
   id: string;
   label: string;
+  labelNl?: string;
   blurb: string;
+  blurbNl?: string;
   verbs: VerbEntry[];
   adjectives: AdjectiveEntry[];
 }
 
+/**
+ * Dutch meanings, keyed by the dictionary form. Kept apart from the rows above
+ * so a translation can be added without disturbing tables that are checked
+ * against the dictionary. Anything absent falls back to the English meaning.
+ */
+const MEANINGS_NL: Record<string, string> = {};
+
+/** The keys the Dutch table above is allowed to use, for the data tests. */
+export const NL_KEYS: string[] = Object.keys(MEANINGS_NL);
+
+const dutch = (word: string) => (MEANINGS_NL[word] ? { meaningNl: MEANINGS_NL[word] } : {});
+
 const verbs = (rows: VerbRow[], groupId: string): VerbEntry[] =>
   rows.map(([word, reading, meaning, verbClass, overrides]) => ({
-    word, reading, meaning, verbClass, groupId, ...(overrides ? { overrides } : {}),
+    word, reading, meaning, ...dutch(word), verbClass, groupId,
+    ...(overrides ? { overrides } : {}),
   }));
 
 const adjectives = (rows: AdjRow[], groupId: string): AdjectiveEntry[] =>
   rows.map(([word, reading, meaning, adjectiveClass, overrides]) => ({
-    word, reading, meaning, adjectiveClass, groupId, ...(overrides ? { overrides } : {}),
+    word, reading, meaning, ...dutch(word), adjectiveClass, groupId,
+    ...(overrides ? { overrides } : {}),
   }));
 
 export const CONJUGATION_GROUPS: ConjugationGroup[] = [
   {
     id: 'godan',
     label: 'Godan verbs (う-verbs)',
+    labelNl: 'Godan-werkwoorden (う-werkwoorden)',
     blurb: 'The big class. The ending shifts row by row, and the て-form depends on which kana it ends in.',
+    blurbNl: 'De grote klasse. De uitgang verschuift per rij, en de て-vorm hangt af van de kana waarop het woord eindigt.',
     verbs: verbs(GODAN, 'godan'),
     adjectives: [],
   },
   {
     id: 'godan-trap',
     label: 'Godan verbs that look ichidan',
+    labelNl: 'Godan-werkwoorden die op ichidan lijken',
     blurb: '帰る, 入る, 走る, 知る all end in る but conjugate as godan. The classic trap.',
+    blurbNl: '帰る, 入る, 走る en 知る eindigen op る maar vervoegen als godan. De klassieke valkuil.',
     verbs: verbs(GODAN_TRAP, 'godan-trap'),
     adjectives: [],
   },
   {
     id: 'ichidan',
     label: 'Ichidan verbs (る-verbs)',
+    labelNl: 'Ichidan-werkwoorden (る-werkwoorden)',
     blurb: 'Drop る and add the ending. The easy class, once you know a verb belongs to it.',
+    blurbNl: 'Haal る weg en plak de uitgang eraan. De makkelijke klasse, zodra je weet dat een werkwoord erbij hoort.',
     verbs: verbs(ICHIDAN, 'ichidan'),
     adjectives: [],
   },
   {
     id: 'irregular',
     label: 'Irregular verbs',
+    labelNl: 'Onregelmatige werkwoorden',
     blurb: 'する and 来る, and the する compounds that follow them.',
+    blurbNl: 'する en 来る, en de する-samenstellingen die daarop volgen.',
     verbs: verbs(IRREGULAR, 'irregular'),
     adjectives: [],
   },
   {
     id: 'i-adj',
     label: 'い-adjectives',
+    labelNl: 'い-adjectieven',
     blurb: 'Drop い and add くない, かった, くなかった. いい conjugates from よい instead.',
+    blurbNl: 'Haal い weg en plak くない, かった of くなかった eraan. いい vervoegt in plaats daarvan vanuit よい.',
     verbs: [],
     adjectives: adjectives(I_ADJ, 'i-adj'),
   },
   {
     id: 'na-adj',
     label: 'な-adjectives',
+    labelNl: 'な-adjectieven',
     blurb: 'No stem change at all — じゃない, だった, じゃなかった attach to the word.',
+    blurbNl: 'Geen stamverandering — じゃない, だった en じゃなかった hangen gewoon aan het woord.',
     verbs: [],
     adjectives: adjectives(NA_ADJ, 'na-adj'),
   },
