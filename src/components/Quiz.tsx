@@ -309,6 +309,9 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
                   onClick={() => dispatch({ type: 'answer', given: choice })}
                 >
                   {choice}
+                  {card.choiceNotes?.[choice] && (
+                    <span className="romaji-note">{card.choiceNotes[choice]}</span>
+                  )}
                 </button>
               );
             })}

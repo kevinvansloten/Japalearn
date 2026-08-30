@@ -199,6 +199,58 @@ eq('nor when it is romaji',
 const recall = buildDuolingoCards({ ...base, fromUnit: 1, toUnit: 5, modes: ['recall'] });
 ok('recall accepts the written form', recall.every((c) => c.check(c.answer)));
 
+// Romaji is a display aid: keep Japanese prompts and grading, and never give
+// away a typed reading, recall or listening answer before it is revealed.
+const aidedConfig: DuolingoConfig = { ...base, toUnit: 25, modes: MODES, showRomaji: true };
+const aidedCards = buildDuolingoCards(aidedConfig);
+const unaidedCards = new Map(buildDuolingoCards({ ...aidedConfig, showRomaji: false })
+  .map((card) => [card.id, card]));
+const aided = new Map(aidedCards.map((card) => [card.id, card]));
+eq('romaji aids preserve the card count', aidedCards.length, unaidedCards.size);
+for (const card of aidedCards) {
+  const plain = unaidedCards.get(card.id)!;
+  eq(`romaji preserves the Japanese or audio prompt: ${card.id}`, card.prompt, plain.prompt);
+  eq(`romaji preserves the answer: ${card.id}`, card.answer, plain.answer);
+  eq(`romaji preserves grading: ${card.id}`, card.check(card.answer), plain.check(card.answer));
+  if (!card.id.startsWith('duo-meaning-')) {
+    eq(`no pronunciation hint on a typed question: ${card.id}`, card.promptNote, plain.promptNote);
+  }
+}
+eq('kanji meaning prompt has romaji', aided.get('duo-meaning-食べます')?.promptNote, 'tabemasu');
+eq('kana meaning prompt has romaji', aided.get('duo-meaning-おちゃ')?.promptNote, 'ocha');
+eq('katakana meaning prompt has romaji', aided.get('duo-meaning-カフェ')?.promptNote, 'kafe');
+ok('answer feedback includes romaji', aided.get('duo-recall-食べます')!.details![0].includes('tabemasu'));
+ok('romaji aid does not accept romaji instead of the requested written form',
+  !aided.get('duo-recall-食べます')!.check('tabemasu'));
+
+const aidedChoices = buildDuolingoCards(choosing(aidedConfig));
+const knownReadings = new Map(duolingoPool(aidedConfig).filter(hasReading)
+  .map((entry) => [entry.word, entry.reading]));
+for (const card of aidedChoices.filter((card) => card.answerScript === 'jp')) {
+  for (const option of card.choices!) {
+    if (card.id.startsWith('duo-reading-') || knownReadings.has(option)) {
+      const pronunciation = card.choiceNotes?.[option];
+      ok(`each Japanese choice has its own pronunciation: ${card.id} / ${option}`,
+        Boolean(pronunciation) && checkReading(pronunciation!, [knownReadings.get(option) ?? option]));
+    }
+  }
+  eq(`romaji hints preserve one correct choice: ${card.id}`,
+    card.choices!.filter((option) => card.check(option)).length, 1);
+}
+
+const aidedKana = buildDuolingoCards({ ...base, toUnit: 25, script: 'kana', showRomaji: true });
+eq('kana script can show romaji alongside it',
+  aidedKana.find((card) => card.id === 'duo-meaning-食べます')?.promptNote, 'tabemasu');
+const alreadyRomaji = buildDuolingoCards(choosing({ ...aidedConfig, script: 'romaji' }));
+ok('romaji script does not repeat pronunciation hints',
+  alreadyRomaji.every((card) => !card.promptNote && !card.choiceNotes));
+
+const unknownReading = ALL_DUOLINGO_WORDS.find((entry) => !hasReading(entry))!;
+const unknownCard = buildDuolingoCards({ ...base, showRomaji: true })
+  .find((card) => card.itemId === duolingoItemId(unknownReading))!;
+ok('words without readings remain available without invented romaji',
+  Boolean(unknownCard) && !unknownCard.promptNote && !unknownCard.details![0].includes(' · '));
+
 // ------------------------------------------------------------- ambiguity
 
 /**

@@ -98,6 +98,7 @@ const DEFAULT_DUOLINGO: DuolingoConfig = {
   modes: ['meaning'],
   inputModes: { meaning: 'type', recall: 'choice', reading: 'type', listening: 'type' },
   script: 'word',
+  showRomaji: false,
   flow: 'mistakes',
   order: 'shuffled',
 };

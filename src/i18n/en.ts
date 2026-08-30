@@ -225,6 +225,10 @@ export const en = {
     noUnitsInRange: 'Pick a range of units',
     howWritten: 'How should the Japanese be written?',
     howWrittenHint: 'This decides what you see, and what counts as an answer.',
+    showRomaji: 'Show romaji alongside Japanese',
+    showRomajiHint:
+      'Add pronunciation in Latin letters, like 食べます · tabemasu, without changing how you ' +
+      'answer. Reading and listening prompts won’t give away the answer.',
     duolingoImeNote:
       'Meaning → word with typing needs a Japanese IME. Write the Japanese in kana or romaji ' +
       'instead, or answer by multiple choice, and it works anywhere.',

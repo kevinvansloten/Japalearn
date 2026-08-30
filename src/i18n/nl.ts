@@ -208,6 +208,10 @@ export const nl: Strings = {
     noUnitsInRange: 'Kies een reeks units',
     howWritten: 'Hoe moet het Japans geschreven worden?',
     howWrittenHint: 'Dit bepaalt wat je ziet, en wat als antwoord telt.',
+    showRomaji: 'Toon romaji naast het Japans',
+    showRomajiHint:
+      'Toon de uitspraak in Latijnse letters, zoals 食べます · tabemasu, zonder te veranderen ' +
+      'hoe je antwoordt. Lees- en luistervragen verklappen het antwoord niet.',
     duolingoImeNote:
       'Betekenis → woord met typen vereist een Japanse IME. Schrijf het Japans in kana of ' +
       'romaji, of antwoord met meerkeuze, en het werkt overal.',
