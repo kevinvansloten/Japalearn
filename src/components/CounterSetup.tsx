@@ -6,18 +6,23 @@ import {
   type CounterConfig,
   type CounterMode,
 } from '../lib/buildCards';
-import type { Card, InputMode } from '../lib/session';
+import type { Card } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
+import {
+  DeckPicker,
+  ModePicker,
+  SetupHeader,
+  StartBar,
+  masteryColour,
+  toggle,
+  type ModeOption,
+} from './DeckPicker';
+import { FlowPicker } from './ui';
 import { useStrings } from '../i18n';
 import { blurbOf, labelOf, meaningOf } from '../i18n/content';
-import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll, masteryColour } from './ui';
 
 const MODES: CounterMode[] = ['reading', 'meaning', 'listening'];
-
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
 
 interface Props {
   config: CounterConfig;
@@ -36,129 +41,62 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
     ? config
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
-  const selected = counterPool(usable).length;
   const cards = buildCounterCards(usable, s);
-  const ready = cards.length > 0;
 
-  const setGroupItems = (groupId: string, include: boolean) => {
-    const group = COUNTER_GROUPS.find((g) => g.id === groupId);
-    if (!group) return;
-    const forms = group.items.map((i) => i.form);
-    patch({
-      excluded: include
-        ? config.excluded.filter((f) => !forms.includes(f))
-        : [...new Set([...config.excluded, ...forms])],
-    });
-  };
+  const groups = COUNTER_GROUPS.map((group) => ({
+    id: group.id,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
+    items: group.items.map((item) => ({
+      key: item.form,
+      label: item.form,
+      title: `${item.form} (${item.reading}) — ${meaningOf(item, s.lang)}`,
+      dot: masteryColour(itemAccuracy(stats[`counter:${item.form}`])),
+      flag: item.irregular,
+    })),
+  }));
+
+  const modes: ModeOption<CounterMode>[] = MODES.map((mode) => ({
+    id: mode,
+    label: s.counterMode.label[mode],
+    blurb: s.counterMode.blurb[mode],
+    ...(mode === 'listening' && !hasVoice
+      ? { unavailable: s.setup.needsVoice }
+      : {}),
+  }));
 
   return (
     <div className="stack">
-      <div className="row between">
-        <div>
-          <strong>{s.deck.counters}</strong>
-          <div className="faint">{s.setup.countersSelected(selected, cards.length)}</div>
-        </div>
-        <button type="button" className="btn ghost" onClick={onHome}>
-          {s.common.home}
-        </button>
-      </div>
+      <SetupHeader
+        title={s.deck.counters}
+        subtitle={s.setup.countersSelected(counterPool(usable).length, cards.length)}
+        onHome={onHome}
+      />
 
-      <Panel
+      <DeckPicker
         title={s.setup.whatToDrill}
         hint={s.setup.whatToDrillHint}
-        aside={
-          <SelectAll
-            all={() => patch({ groupIds: COUNTER_GROUPS.map((g) => g.id), excluded: [] })}
-            none={() => patch({ groupIds: [] })}
-          />
+        groups={groups}
+        groupIds={config.groupIds}
+        excluded={config.excluded}
+        onGroups={(groupIds) => patch({ groupIds })}
+        onExcluded={(excluded) => patch({ excluded })}
+        footnote={s.setup.irregularNote}
+      />
+
+      <ModePicker<CounterMode>
+        hint={s.setup.anyCombination}
+        modes={modes}
+        selected={usable.modes}
+        inputModes={config.inputModes}
+        onToggle={(mode) => {
+          const next = toggle(config.modes, mode);
+          if (next.length) patch({ modes: next });
+        }}
+        onInputMode={(mode, value) =>
+          patch({ inputModes: { ...config.inputModes, [mode]: value } })
         }
-      >
-        {COUNTER_GROUPS.map((group) => {
-          const on = config.groupIds.includes(group.id);
-          const included = group.items.filter((i) => !config.excluded.includes(i.form)).length;
-          return (
-            <div className="group-block" key={group.id}>
-              <div className="group-head">
-                <div>
-                  <Chip
-                    pressed={on}
-                    onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
-                  >
-                    {labelOf(group, s.lang)} · {included}/{group.items.length}
-                  </Chip>
-                  <div className="hint" style={{ marginTop: 4 }}>
-                    {blurbOf(group, s.lang)}
-                  </div>
-                </div>
-                {on && (
-                  <SelectAll
-                    all={() => setGroupItems(group.id, true)}
-                    none={() => setGroupItems(group.id, false)}
-                  />
-                )}
-              </div>
-
-              {on && (
-                <div className="item-picker">
-                  {group.items.map((item) => {
-                    const isIncluded = !config.excluded.includes(item.form);
-                    const colour = masteryColour(itemAccuracy(stats[`counter:${item.form}`]));
-                    return (
-                      <button
-                        key={item.form}
-                        type="button"
-                        className="item-toggle"
-                        aria-pressed={isIncluded}
-                        title={`${item.form} (${item.reading}) — ${meaningOf(item, s.lang)}`}
-                        onClick={() => patch({ excluded: toggle(config.excluded, item.form) })}
-                      >
-                        {item.form}
-                        {item.irregular && <span className="warn" aria-hidden="true" />}
-                        {colour && <span className="dot" style={{ background: colour }} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        <p className="faint" style={{ marginTop: 12 }}>
-          {s.setup.irregularNote}
-        </p>
-      </Panel>
-
-      <Panel title={s.setup.howAsked} hint={s.setup.anyCombination}>
-        <div className="mode-list">
-          {MODES.map((mode) => (
-            <ModeCard
-              key={mode}
-              pressed={usable.modes.includes(mode)}
-              disabled={mode === 'listening' && !hasVoice}
-              onClick={() => {
-                const next = toggle(config.modes, mode);
-                if (next.length) patch({ modes: next });
-              }}
-              title={s.counterMode.label[mode]}
-              blurb={
-                mode === 'listening' && !hasVoice ? s.setup.needsVoice : s.counterMode.blurb[mode]
-              }
-              aside={
-                <Segmented<InputMode>
-                  value={config.inputModes[mode]}
-                  onChange={(value) =>
-                    patch({ inputModes: { ...config.inputModes, [mode]: value } })
-                  }
-                  options={[
-                    { value: 'type', label: s.common.type },
-                    { value: 'choice', label: s.common.choose },
-                  ]}
-                />
-              }
-            />
-          ))}
-        </div>
-      </Panel>
+      />
 
       <FlowPicker
         flow={config.flow}
@@ -167,16 +105,7 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <div className="row">
-        <button
-          type="button"
-          className="btn primary big"
-          disabled={!ready}
-          onClick={() => onStart(cards)}
-        >
-          {ready ? s.setup.start(cards.length) : s.setup.pickASet}
-        </button>
-      </div>
+      <StartBar count={cards.length} empty={s.setup.pickASet} onStart={() => onStart(cards)} />
     </div>
   );
 }

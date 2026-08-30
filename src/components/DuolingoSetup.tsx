@@ -1,16 +1,13 @@
 /**
  * Picking a stretch of the Duolingo course to practise.
  *
- * The other setup screens list their groups as chips and let you toggle any
- * combination, which works because none of them has more than a dozen. This
- * deck has three hundred and ten units and you are always at some point along
- * them, so the selection is a range instead: from the unit you started at to
- * the one you are on. That is the question a Duolingo learner can actually
- * answer, and it is two numbers to save rather than a list of hundreds.
- *
- * Units in range are listed, and only the one you open renders its words — a
- * range of forty units is two thousand toggles, and building them all to keep
- * one on screen is what would make this screen feel slow.
+ * The header, the mode list and the start button are the shared ones, but the
+ * selection itself is not: DeckPicker switches groups on and off, and this deck
+ * has three hundred and ten of them with the learner always at some point along
+ * them. Three hundred and ten checkboxes is not a question anyone can answer.
+ * "I am on unit 37" is, so the selection is a range — two numbers to save
+ * rather than a list of hundreds — and only the unit you open renders its
+ * words, because a range of forty is two thousand toggles.
  */
 import { useMemo, useState } from 'react';
 import {
@@ -30,19 +27,23 @@ import {
   type DuolingoMode,
   type DuolingoScript,
 } from '../lib/buildCards';
-import type { Card, InputMode } from '../lib/session';
+import type { Card } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
 import { useStrings } from '../i18n';
 import { labelOf, blurbOf, meaningsOf } from '../i18n/content';
-import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll, masteryColour } from './ui';
+import {
+  ModePicker,
+  SetupHeader,
+  StartBar,
+  masteryColour,
+  toggle,
+  type ModeOption,
+} from './DeckPicker';
+import { Chip, FlowPicker, ModeCard, Panel, SelectAll } from './ui';
 
 const MODES: DuolingoMode[] = ['meaning', 'recall', 'reading', 'listening'];
 const SCRIPTS: DuolingoScript[] = ['word', 'kana', 'romaji'];
-
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
 
 const clamp = (n: number): number => Math.min(LAST_UNIT, Math.max(FIRST_UNIT, n));
 
@@ -67,12 +68,31 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
   const units = duolingoUnits(usable);
   const selected = duolingoPool(usable);
   const count = duolingoCardCount(usable);
-  const ready = count > 0;
 
-  // Phrases the dictionary would not give a single reading for: they still
+  // Phrases the dictionary would not give a single reading for. They still
   // carry meaning and recall cards, and it is worth saying so before the
   // learner wonders why the numbers do not line up.
   const unreadable = selected.filter((entry) => !hasReading(entry)).length;
+
+  const modes: ModeOption<DuolingoMode>[] = MODES.map((mode) => ({
+    id: mode,
+    label: s.duolingoMode.label[mode],
+    blurb: s.duolingoMode.blurb[mode],
+    ...(mode === 'listening' && !hasVoice
+      ? { unavailable: s.setup.needsVoice }
+      : mode === 'reading' && config.script !== 'word'
+      ? { unavailable: s.setup.readingNeedsWord }
+      : {}),
+  }));
+
+  const notes = [
+    usable.modes.includes('recall') &&
+    config.inputModes.recall === 'type' &&
+    config.script === 'word'
+      ? s.setup.duolingoImeNote
+      : null,
+    unreadable > 0 ? s.setup.noReadingNote(unreadable) : null,
+  ].filter(Boolean);
 
   const setUnitWords = (unitId: string, include: boolean) => {
     const unit = DUOLINGO_UNITS.find((u) => u.id === unitId);
@@ -87,15 +107,11 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
 
   return (
     <div className="stack">
-      <div className="row between">
-        <div>
-          <strong>{s.deck.duolingo}</strong>
-          <div className="faint">{s.setup.duolingoSelected(selected.length, count)}</div>
-        </div>
-        <button type="button" className="btn ghost" onClick={onHome}>
-          {s.common.home}
-        </button>
-      </div>
+      <SetupHeader
+        title={s.deck.duolingo}
+        subtitle={s.setup.duolingoSelected(selected.length, count)}
+        onHome={onHome}
+      />
 
       <Panel
         title={s.setup.whichUnits}
@@ -177,16 +193,15 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
                 </div>
 
                 {isOpen && (
-                  <div className="item-picker">
+                  <div className="item-picker layout-wide">
                     {unit.words.map((entry) => {
-                      const isIncluded = !config.excluded.includes(entry.word);
                       const colour = masteryColour(itemAccuracy(stats[duolingoItemId(entry)]));
                       return (
                         <button
                           key={entry.word}
                           type="button"
                           className="item-toggle"
-                          aria-pressed={isIncluded}
+                          aria-pressed={!config.excluded.includes(entry.word)}
                           title={`${entry.word}${
                             hasReading(entry) && hasKanji(entry) ? ` (${entry.reading})` : ''
                           } — ${meaningsOf(entry, s.lang).join(', ')}`}
@@ -220,56 +235,20 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
         </div>
       </Panel>
 
-      <Panel title={s.setup.howAsked} hint={s.setup.anyCombinationEach}>
-        <div className="mode-list">
-          {MODES.map((mode) => (
-            <ModeCard
-              key={mode}
-              pressed={usable.modes.includes(mode)}
-              disabled={
-                (mode === 'listening' && !hasVoice) ||
-                (mode === 'reading' && config.script !== 'word')
-              }
-              onClick={() => {
-                const next = toggle(config.modes, mode);
-                if (next.length) patch({ modes: next });
-              }}
-              title={s.duolingoMode.label[mode]}
-              blurb={
-                mode === 'listening' && !hasVoice
-                  ? s.setup.needsVoice
-                  : mode === 'reading' && config.script !== 'word'
-                  ? s.setup.readingNeedsWord
-                  : s.duolingoMode.blurb[mode]
-              }
-              aside={
-                <Segmented<InputMode>
-                  value={config.inputModes[mode]}
-                  onChange={(value) =>
-                    patch({ inputModes: { ...config.inputModes, [mode]: value } })
-                  }
-                  options={[
-                    { value: 'type', label: s.common.type },
-                    { value: 'choice', label: s.common.choose },
-                  ]}
-                />
-              }
-            />
-          ))}
-        </div>
-        {usable.modes.includes('recall') &&
-          config.inputModes.recall === 'type' &&
-          config.script === 'word' && (
-            <p className="faint" style={{ marginTop: 10 }}>
-              {s.setup.duolingoImeNote}
-            </p>
-          )}
-        {unreadable > 0 && (
-          <p className="faint" style={{ marginTop: 10 }}>
-            {s.setup.noReadingNote(unreadable)}
-          </p>
-        )}
-      </Panel>
+      <ModePicker<DuolingoMode>
+        hint={s.setup.anyCombinationEach}
+        modes={modes}
+        selected={usable.modes}
+        inputModes={config.inputModes}
+        onToggle={(mode) => {
+          const next = toggle(config.modes, mode);
+          if (next.length) patch({ modes: next });
+        }}
+        onInputMode={(mode, value) =>
+          patch({ inputModes: { ...config.inputModes, [mode]: value } })
+        }
+        footnote={notes.length ? notes.join(' ') : undefined}
+      />
 
       <FlowPicker
         flow={config.flow}
@@ -278,16 +257,11 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <div className="row">
-        <button
-          type="button"
-          className="btn primary big"
-          disabled={!ready}
-          onClick={() => onStart(buildDuolingoCards(usable, s))}
-        >
-          {ready ? s.setup.start(count) : s.setup.pickASet}
-        </button>
-      </div>
+      <StartBar
+        count={count}
+        empty={s.setup.pickASet}
+        onStart={() => onStart(buildDuolingoCards(usable, s))}
+      />
     </div>
   );
 }

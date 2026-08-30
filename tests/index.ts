@@ -6,6 +6,7 @@ import './duolingo.test';
 import './browse.test';
 import './conjugate.test';
 import './particles.test';
+import './reading.test';
 import './curriculum.test';
 import './schedule.test';
 import './forecast.test';

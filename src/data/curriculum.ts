@@ -13,7 +13,8 @@
 import type { KanaScript } from '../lib/buildCards';
 import type { AdjectiveForm, VerbForm } from '../lib/conjugate';
 
-export type DeckId = 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
+export type DeckId =
+  | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'reading';
 
 /** One deck's contribution to a stage. */
 export interface StagePart {
@@ -233,6 +234,16 @@ export const CURRICULUM: Stage[] = [
     parts: [
       { deck: 'kanji', groupIds: ['position', 'body'] },
       { deck: 'words', groupIds: ['when'] },
+    ],
+  },
+  {
+    id: 'reading',
+    title: 'Reading whole sentences',
+    titleNl: 'Hele zinnen lezen',
+    goal: 'Read a sentence and know what it says, without the furigana.',
+    goalNl: 'Lees een zin en weet wat er staat, zonder de furigana.',
+    parts: [
+      { deck: 'reading', groupIds: ['statements', 'routine', 'going', 'describing', 'questions'] },
     ],
   },
   {

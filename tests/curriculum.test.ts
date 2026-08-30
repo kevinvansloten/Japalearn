@@ -5,6 +5,7 @@ import { ALL_KANA, KANA_GROUPS } from '../src/data/kana';
 import { ALL_KANJI, KANJI_GROUPS } from '../src/data/kanji';
 import { ALL_PARTICLE_SENTENCES, PARTICLE_GROUPS } from '../src/data/particles';
 import { ALL_WORDS, WORD_GROUPS } from '../src/data/words';
+import { ALL_READING_SENTENCES, READING_GROUPS, written } from '../src/data/reading';
 import { CONJUGATION_GROUPS } from '../src/data/conjugation';
 import type { Decks } from '../src/lib/review';
 import {
@@ -49,6 +50,7 @@ const decks: Decks = {
     flow: 'once', order: 'ordered',
   },
   particles: { groupIds: [], excluded: [], inputMode: 'choice', flow: 'once', order: 'ordered' },
+  reading: { groupIds: [], excluded: [], modes: ['meaning'], flow: 'once', order: 'ordered' },
 };
 
 // -------------------------------------------------------------- mastery
@@ -90,6 +92,7 @@ const groupsByDeck: Record<string, Set<string>> = {
   words: new Set(WORD_GROUPS.map((g) => g.id)),
   conjugation: new Set(CONJUGATION_GROUPS.map((g) => g.id)),
   particles: new Set(PARTICLE_GROUPS.map((g) => g.id)),
+  reading: new Set(READING_GROUPS.map((g) => g.id)),
 };
 const strayGroups: string[] = [];
 for (const stage of CURRICULUM) {
@@ -114,6 +117,7 @@ const everything = [
   ...ALL_WORDS.map((w) => `vocab:${w.word}`),
   ...[...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   ...ALL_PARTICLE_SENTENCES.map((s) => `particle:${s.text}`),
+  ...ALL_READING_SENTENCES.map((s) => `reading:${written(s)}`),
 ];
 const unplanned = everything.filter((id) => !planned.has(id));
 ok('the plan covers every item', unplanned.length === 0,
@@ -239,3 +243,43 @@ const kataCards = buildStageCards(katakanaBasic, decks);
 ok('katakana stage cards use katakana ids',
   kataCards.every((c) => c.itemId.startsWith('kana:kata:')),
   kataCards.find((c) => !c.itemId.startsWith('kana:kata:'))?.itemId);
+
+// ------------------------------------- studying a stage must advance it
+
+/**
+ * The bug this guards: the guide's "Study this" started an ordinary practice
+ * session, and practice deliberately never sets a box. A stage is measured in
+ * boxes, so the button could never move the progress it was offering — the
+ * panel sat at "0 of 46 known" however much you studied.
+ *
+ * These assert the two halves of the fix: a stage becomes reachable only
+ * through the scheduling path, and one session is visible as *learning* even
+ * though it is not yet *known*.
+ */
+const stageOne = CURRICULUM[0];
+const stageOneItems = stageItems(stageOne);
+
+// What practice records: counts, and no schedule at all.
+const practised = Object.fromEntries(
+  stageOneItems.map((id) => [id, stat({ right: 3, wrong: 0, lastSeen: NOW })]),
+);
+eq('practice alone leaves a stage untouched', stageProgress(stageOne, practised).known, 0);
+eq('and none of it counts as learning either', stageProgress(stageOne, practised).learning, 0);
+eq('so the plan does not move', currentStage(practised)!.id, stageOne.id);
+
+// What one scheduled session records: box 1 for everything answered.
+const studiedOnce = Object.fromEntries(
+  stageOneItems.map((id) => [id, stat({ right: 1, wrong: 0, box: 1, due: NOW + DAY })]),
+);
+eq('one session is not yet known', stageProgress(stageOne, studiedOnce).known, 0);
+eq('but all of it is visibly learning',
+  stageProgress(stageOne, studiedOnce).learning, stageOneItems.length);
+ok('which is progress the panel can show',
+  stageProgress(stageOne, studiedOnce).learning > 0);
+
+// And repeated sessions carry it to known, completing the stage.
+const studiedUntilKnown = Object.fromEntries(
+  stageOneItems.map((id) => [id, stat({ right: 3, wrong: 0, box: 3, due: NOW + 7 * DAY })]),
+);
+eq('sticking with it completes the stage', isStageComplete(stageOne, studiedUntilKnown), true);
+eq('and the plan moves on', currentStage(studiedUntilKnown)!.id, CURRICULUM[1].id);

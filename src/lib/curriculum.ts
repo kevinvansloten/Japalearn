@@ -9,6 +9,7 @@ import { COUNTER_GROUPS } from '../data/counters';
 import { KANA_GROUPS } from '../data/kana';
 import { KANJI_GROUPS } from '../data/kanji';
 import { PARTICLE_GROUPS } from '../data/particles';
+import { READING_GROUPS, written } from '../data/reading';
 import { WORD_GROUPS } from '../data/words';
 import {
   buildConjugationCards,
@@ -16,6 +17,7 @@ import {
   buildKanaCards,
   buildKanjiCards,
   buildParticleCards,
+  buildReadingCards,
   buildWordCards,
 } from './buildCards';
 import type { Decks } from './review';
@@ -55,6 +57,10 @@ function partItems(part: StagePart): string[] {
     case 'particles':
       return PARTICLE_GROUPS.filter((g) => part.groupIds.includes(g.id)).flatMap((g) =>
         g.sentences.map((s) => `particle:${s.text}`),
+      );
+    case 'reading':
+      return READING_GROUPS.filter((g) => part.groupIds.includes(g.id)).flatMap((g) =>
+        g.sentences.map((s) => `reading:${written(s)}`),
       );
   }
 }
@@ -118,6 +124,8 @@ export function buildStageCards(stage: Stage, decks: Decks, s: Strings = en): Ca
         );
       case 'particles':
         return buildParticleCards({ ...decks.particles, groupIds: part.groupIds, excluded: [] }, s);
+      case 'reading':
+        return buildReadingCards({ ...decks.reading, groupIds: part.groupIds, excluded: [] }, s);
     }
   });
 }
@@ -160,6 +168,9 @@ export function applyStage(stage: Stage, decks: Decks): Decks {
         break;
       case 'particles':
         next = { ...next, particles: { ...next.particles, groupIds: part.groupIds, excluded: [] } };
+        break;
+      case 'reading':
+        next = { ...next, reading: { ...next.reading, groupIds: part.groupIds, excluded: [] } };
         break;
     }
   }

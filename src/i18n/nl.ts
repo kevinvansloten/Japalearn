@@ -43,6 +43,7 @@ export const nl: Strings = {
     particles: 'Partikels',
     duolingo: 'Duolingo — de woordenlijst van de cursus',
     duolingoShort: 'Duolingo',
+    reading: 'Lezen',
   },
 
   run: {
@@ -54,15 +55,16 @@ export const nl: Strings = {
     conjugation: 'Vervoeging',
     particles: 'Partikels',
     duolingo: 'Duolingo-woorden',
+    reading: 'Lezen',
   },
 
   home: {
     intro:
-      'Zes decks die N5 afdekken: de kana, de kanji, de telwoorden die zich nooit gedragen, de ' +
-      'kernwoordenschat, hoe werkwoorden en bijvoeglijke naamwoorden vervoegen, en welk partikel ' +
-      'een zin nodig heeft. Herhaal wat aan de beurt is, of kies een deck en oefen precies wat ' +
-      'je wilt. Daarnaast staat de woordenlijst van de Duolingo-cursus, unit voor unit, om ' +
-      'terug te gaan over wat die je geleerd heeft.',
+      'Zeven decks die N5 afdekken: de kana, de kanji, de telwoorden die zich nooit gedragen, ' +
+      'de kernwoordenschat, hoe werkwoorden en bijvoeglijke naamwoorden vervoegen, welk ' +
+      'partikel een zin nodig heeft, en hele zinnen lezen. Herhaal wat aan de beurt is, of ' +
+      'kies een deck en oefen precies wat je wilt. Daarnaast staat de woordenlijst van de ' +
+      'Duolingo-cursus, unit voor unit, om terug te gaan over wat die je geleerd heeft.',
     step: (n, total) => `Stap ${n} van ${total}`,
     known: (known, total) => `${known} van ${total} beheerst`,
     planDone: 'Je bent het hele plan doorgelopen',
@@ -90,6 +92,8 @@ export const nl: Strings = {
       `ます, て-vorm, ない en verleden tijd, over ${verbs} werkwoorden en ${adjectives} ` +
       'bijvoeglijke naamwoorden.',
     particlesBlurb: (n) => `${n} zinnen met een gat — は, が, を, に, で en de rest.`,
+    readingBlurb: (n) =>
+      `${n} korte zinnen die de andere decks samen gebruiken, met furigana als je erom vraagt.`,
     duolingoBlurb: (words, units) =>
       `${words} woorden uit de ${units} units van de cursus, in de volgorde waarin die ze aanbiedt.`,
     notPractised: 'nog niet geoefend',
@@ -187,6 +191,10 @@ export const nl: Strings = {
       `${n} van de gekozen woorden staan al in kana, dus die krijgen geen leeskaart.`,
     wordImeNote: 'Betekenis → woord met typen vereist een Japanse IME. Meerkeuze werkt overal.',
 
+    readingSelected: (sentences, cards) => `${sentences} zinnen · ${cards} kaarten`,
+    whichSentences: 'Welke zinnen?',
+    whichSentencesHint: 'Gegroepeerd op het patroon dat ze gebruiken, zodat een set samenhangt.',
+    furiganaNote: 'Furigana blijven verborgen tot je erom vraagt, zodat je eerst de kanji leest.',
     duolingoSelected: (words, cards) => `${words} woorden geselecteerd · ${cards} kaarten`,
     whichUnits: 'Welke units?',
     whichUnitsHint:
@@ -311,6 +319,8 @@ export const nl: Strings = {
     whichForm: 'Welke vorm is dit?',
     whichDictionaryForm: 'Welke is de woordenboekvorm?',
     writeDictionaryForm: 'Schrijf de woordenboekvorm',
+    whatDoesThisSay: 'Wat staat hier?',
+    whatDidYouHear: 'Wat hoorde je?',
     whichParticle: 'Welk partikel hoort in het gat?',
     theParticle: 'het partikel',
     alsoWorks: (list) => `${list} kan hier ook.`,
@@ -402,6 +412,17 @@ export const nl: Strings = {
       word: 'Schrijf het woord (vereist een Japanse IME)',
       kana: 'Schrijf het in kana',
       romaji: 'Schrijf het in romaji',
+    },
+  },
+
+  readingMode: {
+    label: {
+      meaning: 'Lees het',
+      listening: 'Hoor het',
+    },
+    blurb: {
+      meaning: 'Lees de zin en kies wat hij betekent.',
+      listening: 'Hoor de zin en kies wat hij betekent.',
     },
   },
 

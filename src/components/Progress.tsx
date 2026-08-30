@@ -5,17 +5,18 @@ import { ALL_COUNTERS } from '../data/counters';
 import { ALL_KANA } from '../data/kana';
 import { ALL_KANJI } from '../data/kanji';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
+import { ALL_READING_SENTENCES, written } from '../data/reading';
 import { ALL_WORDS } from '../data/words';
 import { currentStage, stageNumber } from '../lib/curriculum';
 // Aliased: `forecast` is already the name of the week-ahead bucket list below.
 import { DEFAULT_ACCURACY, forecast as projectPlan } from '../lib/forecast';
-import { reviewForecast, summarise, weakest, type Summary } from '../lib/progress';
+import { reviewForecast, summarise, weakest } from '../lib/progress';
 import { loadItemStats, loadPace, secondsPerCard } from '../lib/storage';
 import { useStrings } from '../i18n';
-import { meaningsOf, titleOf } from '../i18n/content';
+import { meaningsOf, sentenceOf, titleOf } from '../i18n/content';
 import type { Lang } from '../i18n/lang';
 import type { Strings } from '../i18n/en';
-import { Panel, stageDateFormat } from './ui';
+import { MasteryBar, Panel, stageDateFormat } from './ui';
 
 const decksOf = (s: Strings): { label: string; itemIds: string[] }[] => [
   {
@@ -32,6 +33,10 @@ const decksOf = (s: Strings): { label: string; itemIds: string[] }[] => [
   {
     label: s.deck.particles,
     itemIds: ALL_PARTICLE_SENTENCES.map((sentence) => `particle:${sentence.text}`),
+  },
+  {
+    label: s.deck.reading,
+    itemIds: ALL_READING_SENTENCES.map((sentence) => `reading:${written(sentence)}`),
   },
 ];
 
@@ -64,21 +69,15 @@ function describe(itemId: string, s: Strings, lang: Lang): { glyph: string; note
       return { glyph: key, note: s.progress.conjugationNote };
     case 'particle':
       return { glyph: key, note: '' };
+    case 'reading': {
+      const sentence = ALL_READING_SENTENCES.find((r) => written(r) === key);
+      return sentence ? { glyph: key, note: sentenceOf(sentence, lang) } : { glyph: key, note: '' };
+    }
     default:
       return null;
   }
 }
 
-function Bar({ summary }: { summary: Summary }) {
-  const s = useStrings();
-  const pct = (n: number) => (summary.total ? (n / summary.total) * 100 : 0);
-  return (
-    <div className="mastery-bar" title={s.progress.barTitle(summary.known, summary.learning)}>
-      <span className="known" style={{ width: `${pct(summary.known)}%` }} />
-      <span className="learning" style={{ width: `${pct(summary.learning)}%` }} />
-    </div>
-  );
-}
 
 interface Props {
   onHome: () => void;
@@ -137,7 +136,11 @@ export function Progress({ onHome }: Props) {
                   {summary.accuracy !== null && ` · ${summary.accuracy}%`}
                 </span>
               </div>
-              <Bar summary={summary} />
+              <MasteryBar
+                known={summary.known}
+                learning={summary.learning}
+                total={summary.total}
+              />
             </div>
           );
         })}

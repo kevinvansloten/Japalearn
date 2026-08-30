@@ -1,8 +1,9 @@
 # 日本 JapanLearner
 
-A practice app for learning Japanese, covering N5 across six decks: the kana,
+A practice app for learning Japanese, covering N5 across seven decks: the kana,
 the kanji, the counters and dates that never behave, the core vocabulary, how
-verbs and adjectives conjugate, and which particle a sentence takes. It schedules your reviews, so
+verbs and adjectives conjugate, which particle a sentence takes, and finally
+reading whole sentences. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
 you can still pick exactly what to drill and how to be asked, or put the
 questions aside and just read the material.
@@ -180,8 +181,18 @@ daily load, which is the surest way to stop reviewing at all. The review deck
 picks a random enabled mode each time an item comes round, so both get
 exercised over the weeks.
 
-Practising a deck yourself never touches the schedule — drilling something ten
-times in an afternoon should not push its next review out a month.
+Studying a stage from the plan counts as a review of that stage: it is the
+guided form of the same thing, and it has to be, or the button could never move
+the progress it is offering.
+
+Picking a deck and drilling it yourself is different, and deliberately does not
+touch the schedule — drilling something ten times in an afternoon should not
+push its next review out a month. The deck cards on the home screen still show
+what you have practised and how accurately.
+
+One session leaves everything in box 1, which is *learning* rather than
+*known*, so the plan shows both. Otherwise a session that went perfectly well
+would read as no progress at all.
 
 ## How long it takes
 
@@ -461,6 +472,28 @@ it cannot drift into justifying something else. `npm run check:data particles`
 then looks each one up in a sentence corpus — see below for how far that
 actually gets.
 
+## Reading
+
+Forty short sentences, and the first deck that asks you to use the others at
+once: the kanji, the vocabulary, the conjugated verbs and the particles
+together. Read the sentence, say what it means.
+
+![A reading card with the furigana shown](docs/screenshots/reading.png)
+
+Furigana start hidden, because reading the kanji is the point — one button
+brings them back when you are stuck, and they hide again on the next sentence.
+There is a listening mode too, where the sentence is only spoken.
+
+Sentences are stored as furigana segments rather than as text plus a reading,
+so the written form and the reading are derived from the same place and cannot
+drift apart. Tests hold the segments to it: a reading must be kana, furigana
+may only sit over kanji, no segment may be annotated with itself, and every
+kanji used must be taught somewhere else in the app.
+
+Answering is always multiple choice. Translating a whole sentence by typing
+cannot be graded fairly, and a drill that marks a correct answer wrong is worse
+than no drill.
+
 ## How a session runs
 
 Pick the shape of the session independently of what is in it:
@@ -542,7 +575,7 @@ due date into the scheduler.
 ## Project layout
 
 ```
-src/data/         the six datasets, the look-alike sets, and the study plan
+src/data/         the seven datasets, the look-alike sets, and the study plan
 src/data/duolingo the imported Duolingo deck, and the parser for its blob
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
@@ -557,8 +590,9 @@ src/lib/browse    every deck flattened into lines you can read
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
 src/i18n/         English and Dutch interface text, and the content fallback
-src/components/   home, plan, progress, browse, the seven setup screens, quiz,
+src/components/   home, plan, progress, browse, the eight setup screens, quiz,
                   results
+src/components/DeckPicker  the picker every setup screen shares
 tests/            romaji, session-engine, scheduling, forecast and storage tests
 scripts/          screenshot capture, the JMdict cross-check, the duome import
 ```
@@ -586,8 +620,7 @@ and not the ones it cannot.
 
 ## Ideas for later
 
-- Sentence reading, with a furigana toggle
-- One shared picker component behind the six setup screens
+- An installable offline app, so it works without a connection
 - Stroke-order diagrams and handwriting practice
 - N4 and beyond
 

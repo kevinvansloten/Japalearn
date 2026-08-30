@@ -24,6 +24,7 @@ import type {
   KanaMode,
   KanaScript,
   KanjiMode,
+  ReadingMode,
   WordMode,
 } from '../lib/buildCards';
 import type { Flow } from '../lib/session';
@@ -59,6 +60,7 @@ export const en = {
     particles: 'Particles',
     duolingo: 'Duolingo — the course word list',
     duolingoShort: 'Duolingo',
+    reading: 'Reading',
   },
 
   /** the title a running session carries */
@@ -71,14 +73,16 @@ export const en = {
     conjugation: 'Conjugation',
     particles: 'Particles',
     duolingo: 'Duolingo vocabulary',
+    reading: 'Reading',
   },
 
   home: {
     intro:
-      'Six decks covering N5: the kana, the kanji, the counters that never behave, the core ' +
-      'vocabulary, how verbs and adjectives conjugate, and which particle a sentence takes. ' +
-      'Review what is due, or pick a deck and drill exactly what you choose. Alongside them, ' +
-      'the Duolingo course word list, unit by unit, for going back over what it taught you.',
+      'Seven decks covering N5: the kana, the kanji, the counters that never behave, the core ' +
+      'vocabulary, how verbs and adjectives conjugate, which particle a sentence takes, and ' +
+      'reading whole sentences. Review what is due, or pick a deck and drill exactly what you ' +
+      'choose. Alongside them, the Duolingo course word list, unit by unit, for going back ' +
+      'over what that taught you.',
     step: (n: number, total: number) => `Step ${n} of ${total}`,
     known: (known: number, total: number) => `${known} of ${total} known`,
     planDone: 'You have been through the whole plan',
@@ -104,6 +108,8 @@ export const en = {
     conjugationBlurb: (verbs: number, adjectives: number) =>
       `ます, て-form, ない and past, across ${verbs} verbs and ${adjectives} adjectives.`,
     particlesBlurb: (n: number) => `${n} sentences with a gap — は, が, を, に, で and the rest.`,
+    readingBlurb: (n: number) =>
+      `${n} short sentences that use the other decks together, with furigana on request.`,
     duolingoBlurb: (words: number, units: number) =>
       `${words} words across the course's ${units} units, in the order it teaches them.`,
     notPractised: 'not practised yet',
@@ -200,6 +206,11 @@ export const en = {
     wordImeNote:
       'Meaning → word with typing needs a Japanese IME. Multiple choice works everywhere.',
 
+    readingSelected: (sentences: number, cards: number) =>
+      `${sentences} sentences · ${cards} cards`,
+    whichSentences: 'Which sentences?',
+    whichSentencesHint: 'Grouped by the pattern they use, so a set hangs together.',
+    furiganaNote: 'Furigana are hidden until you ask for them, so you read the kanji first.',
     duolingoSelected: (words: number, cards: number) =>
       `${words} words selected · ${cards} cards`,
     whichUnits: 'Which units?',
@@ -323,6 +334,8 @@ export const en = {
     whichForm: 'Which form is this?',
     whichDictionaryForm: 'Which is the dictionary form?',
     writeDictionaryForm: 'Write the dictionary form',
+    whatDoesThisSay: 'What does this say?',
+    whatDidYouHear: 'What did you hear?',
     whichParticle: 'Which particle belongs in the gap?',
     theParticle: 'the particle',
     alsoWorks: (list: string) => `${list} also works here.`,
@@ -421,6 +434,17 @@ export const en = {
       kana: 'Write it in kana',
       romaji: 'Write it in romaji',
     } as Record<DuolingoScript, string>,
+  },
+
+  readingMode: {
+    label: {
+      meaning: 'Read it',
+      listening: 'Hear it',
+    } as Record<ReadingMode, string>,
+    blurb: {
+      meaning: 'Read the sentence and pick what it means.',
+      listening: 'Hear the sentence and pick what it means.',
+    } as Record<ReadingMode, string>,
   },
 
   duolingoMode: {

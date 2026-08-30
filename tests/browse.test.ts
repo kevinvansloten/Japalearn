@@ -29,7 +29,7 @@ const lines = (deck: BrowseDeck, s = en) => sectionsFor(deck, s).flatMap((x) => 
 
 // -------------------------------------------------------------- coverage
 
-eq('every deck is listed', BROWSE_DECKS.length, 7);
+eq('every deck is listed', BROWSE_DECKS.length, 8);
 
 for (const deck of BROWSE_DECKS) {
   const sections = sectionsFor(deck);
@@ -67,6 +67,7 @@ const NAMESPACE: Record<BrowseDeck, string> = {
   words: 'vocab:',
   conjugation: 'conj:',
   particles: 'particle:',
+  reading: 'reading:',
   duolingo: 'duo:',
 };
 

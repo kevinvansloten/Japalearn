@@ -1,18 +1,23 @@
 import { useMemo } from 'react';
 import { WORD_GROUPS, hasKanji } from '../data/words';
 import { buildWordCards, wordPool, type WordConfig, type WordMode } from '../lib/buildCards';
-import type { Card, InputMode } from '../lib/session';
+import type { Card } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
+import {
+  DeckPicker,
+  ModePicker,
+  SetupHeader,
+  StartBar,
+  masteryColour,
+  toggle,
+  type ModeOption,
+} from './DeckPicker';
+import { FlowPicker } from './ui';
 import { useStrings } from '../i18n';
 import { blurbOf, labelOf, meaningsOf } from '../i18n/content';
-import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll, masteryColour } from './ui';
 
 const MODES: WordMode[] = ['meaning', 'reading', 'recall', 'listening'];
-
-function toggle<T>(list: T[], value: T): T[] {
-  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
 
 interface Props {
   config: WordConfig;
@@ -33,136 +38,73 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
 
   const selected = wordPool(usable);
   const cards = buildWordCards(usable, s);
-  const ready = cards.length > 0;
   const kanaOnly = selected.filter((w) => !hasKanji(w)).length;
 
-  const setGroupWords = (groupId: string, include: boolean) => {
-    const group = WORD_GROUPS.find((g) => g.id === groupId);
-    if (!group) return;
-    const words = group.words.map((w) => w.word);
-    patch({
-      excluded: include
-        ? config.excluded.filter((w) => !words.includes(w))
-        : [...new Set([...config.excluded, ...words])],
-    });
-  };
+  const groups = WORD_GROUPS.map((group) => ({
+    id: group.id,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
+    items: group.words.map((word) => ({
+      key: word.word,
+      label: word.word,
+      title: `${word.word}${hasKanji(word) ? ` (${word.reading})` : ''} — ${meaningsOf(
+        word,
+        s.lang,
+      ).join(', ')}`,
+      dot: masteryColour(itemAccuracy(stats[`vocab:${word.word}`])),
+    })),
+  }));
+
+  const modes: ModeOption<WordMode>[] = MODES.map((mode) => ({
+    id: mode,
+    label: s.wordMode.label[mode],
+    blurb: s.wordMode.blurb[mode],
+    ...(mode === 'listening' && !hasVoice
+      ? { unavailable: s.setup.needsVoice }
+      : {}),
+  }));
+
+  const notes = [
+    usable.modes.includes('reading') && kanaOnly > 0
+      ? s.setup.kanaOnlyNote(kanaOnly)
+      : null,
+    usable.modes.includes('recall') && config.inputModes.recall === 'type'
+      ? s.setup.wordImeNote
+      : null,
+  ].filter(Boolean);
 
   return (
     <div className="stack">
-      <div className="row between">
-        <div>
-          <strong>{s.deck.words}</strong>
-          <div className="faint">{s.setup.wordsSelected(selected.length, cards.length)}</div>
-        </div>
-        <button type="button" className="btn ghost" onClick={onHome}>
-          {s.common.home}
-        </button>
-      </div>
+      <SetupHeader
+        title={s.deck.words}
+        subtitle={s.setup.wordsSelected(selected.length, cards.length)}
+        onHome={onHome}
+      />
 
-      <Panel
+      <DeckPicker
         title={s.setup.whichWords}
         hint={s.setup.whichWordsHint}
-        aside={
-          <SelectAll
-            all={() => patch({ groupIds: WORD_GROUPS.map((g) => g.id), excluded: [] })}
-            none={() => patch({ groupIds: [] })}
-          />
+        groups={groups}
+        groupIds={config.groupIds}
+        excluded={config.excluded}
+        onGroups={(groupIds) => patch({ groupIds })}
+        onExcluded={(excluded) => patch({ excluded })}
+      />
+
+      <ModePicker<WordMode>
+        hint={s.setup.anyCombination}
+        modes={modes}
+        selected={usable.modes}
+        inputModes={config.inputModes}
+        onToggle={(mode) => {
+          const next = toggle(config.modes, mode);
+          if (next.length) patch({ modes: next });
+        }}
+        onInputMode={(mode, value) =>
+          patch({ inputModes: { ...config.inputModes, [mode]: value } })
         }
-      >
-        {WORD_GROUPS.map((group) => {
-          const on = config.groupIds.includes(group.id);
-          const included = group.words.filter((w) => !config.excluded.includes(w.word)).length;
-          return (
-            <div className="group-block" key={group.id}>
-              <div className="group-head">
-                <div>
-                  <Chip
-                    pressed={on}
-                    onClick={() => patch({ groupIds: toggle(config.groupIds, group.id) })}
-                  >
-                    {labelOf(group, s.lang)} · {included}/{group.words.length}
-                  </Chip>
-                  <div className="hint" style={{ marginTop: 4 }}>
-                    {blurbOf(group, s.lang)}
-                  </div>
-                </div>
-                {on && (
-                  <SelectAll
-                    all={() => setGroupWords(group.id, true)}
-                    none={() => setGroupWords(group.id, false)}
-                  />
-                )}
-              </div>
-
-              {on && (
-                <div className="item-picker">
-                  {group.words.map((entry) => {
-                    const isIncluded = !config.excluded.includes(entry.word);
-                    const colour = masteryColour(itemAccuracy(stats[`vocab:${entry.word}`]));
-                    return (
-                      <button
-                        key={entry.word}
-                        type="button"
-                        className="item-toggle"
-                        aria-pressed={isIncluded}
-                        title={`${entry.word}${
-                          hasKanji(entry) ? ` (${entry.reading})` : ''
-                        } — ${meaningsOf(entry, s.lang).join(', ')}`}
-                        onClick={() => patch({ excluded: toggle(config.excluded, entry.word) })}
-                      >
-                        {entry.word}
-                        {colour && <span className="dot" style={{ background: colour }} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </Panel>
-
-      <Panel title={s.setup.howAsked} hint={s.setup.anyCombination}>
-        <div className="mode-list">
-          {MODES.map((mode) => (
-            <ModeCard
-              key={mode}
-              pressed={usable.modes.includes(mode)}
-              disabled={mode === 'listening' && !hasVoice}
-              onClick={() => {
-                const next = toggle(config.modes, mode);
-                if (next.length) patch({ modes: next });
-              }}
-              title={s.wordMode.label[mode]}
-              blurb={
-                mode === 'listening' && !hasVoice ? s.setup.needsVoice : s.wordMode.blurb[mode]
-              }
-              aside={
-                <Segmented<InputMode>
-                  value={config.inputModes[mode]}
-                  onChange={(value) =>
-                    patch({ inputModes: { ...config.inputModes, [mode]: value } })
-                  }
-                  options={[
-                    { value: 'type', label: s.common.type },
-                    { value: 'choice', label: s.common.choose },
-                  ]}
-                />
-              }
-            />
-          ))}
-        </div>
-        {usable.modes.includes('reading') && kanaOnly > 0 && (
-          <p className="faint" style={{ marginTop: 10 }}>
-            {s.setup.kanaOnlyNote(kanaOnly)}
-          </p>
-        )}
-        {usable.modes.includes('recall') && config.inputModes.recall === 'type' && (
-          <p className="faint" style={{ marginTop: 10 }}>
-            {s.setup.wordImeNote}
-          </p>
-        )}
-      </Panel>
+        footnote={notes.length ? notes.join(' ') : undefined}
+      />
 
       <FlowPicker
         flow={config.flow}
@@ -171,16 +113,7 @@ export function WordSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <div className="row">
-        <button
-          type="button"
-          className="btn primary big"
-          disabled={!ready}
-          onClick={() => onStart(cards)}
-        >
-          {ready ? s.setup.start(cards.length) : s.setup.pickASet}
-        </button>
-      </div>
+      <StartBar count={cards.length} empty={s.setup.pickASet} onStart={() => onStart(cards)} />
     </div>
   );
 }

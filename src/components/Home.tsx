@@ -6,6 +6,7 @@ import { ALL_WORDS } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
 import { ALL_DUOLINGO_WORDS, DUOLINGO_UNITS, duolingoItemId } from '../data/duolingo';
+import { ALL_READING_SENTENCES, written } from '../data/reading';
 import { CURRICULUM } from '../data/curriculum';
 import type { Stage } from '../data/curriculum';
 import { stageNumber, stageProgress } from '../lib/curriculum';
@@ -17,9 +18,11 @@ import {
   loadItemStats,
   resetProgress,
   secondsPerCard,
+  type ItemStats,
 } from '../lib/storage';
 import { useStrings } from '../i18n';
 import { goalOf, titleOf } from '../i18n/content';
+import { MasteryBar } from './ui';
 
 interface Props {
   plan: ReviewPlan;
@@ -31,6 +34,7 @@ interface Props {
   onConjugation: () => void;
   onParticles: () => void;
   onDuolingo: () => void;
+  onReading: () => void;
   onProgress: () => void;
   onPlan: () => void;
   onBrowse: () => void;
@@ -56,6 +60,7 @@ export function Home({
   onConjugation,
   onParticles,
   onDuolingo,
+  onReading,
   onProgress,
   onPlan,
   onBrowse,
@@ -103,6 +108,9 @@ export function Home({
   const conjugation = summarise(
     [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   );
+  const readingSummary = summarise(
+    ALL_READING_SENTENCES.map((sentence) => `reading:${written(sentence)}`),
+  );
   const duolingo = summarise(ALL_DUOLINGO_WORDS.map(duolingoItemId));
   const anyProgress =
     kana.seen +
@@ -111,6 +119,7 @@ export function Home({
       words.seen +
       conjugation.seen +
       particles.seen +
+      readingSummary.seen +
       duolingo.seen >
     0;
 
@@ -127,12 +136,7 @@ export function Home({
               <div className="faint">{s.home.step(stageNumber(stage), CURRICULUM.length)}</div>
               <h2>{titleOf(stage, s.lang)}</h2>
               <p className="hint">{goalOf(stage, s.lang)}</p>
-              <p className="faint">
-                {s.home.known(
-                  stageProgress(stage, stats).known,
-                  stageProgress(stage, stats).total,
-                )}
-              </p>
+              <StageProgress stage={stage} stats={stats} />
             </>
           ) : (
             <>
@@ -242,6 +246,13 @@ export function Home({
           <p>{s.home.duolingoBlurb(ALL_DUOLINGO_WORDS.length, DUOLINGO_UNITS.length)}</p>
           <Progress summary={duolingo} unit={s.home.unit.words} />
         </button>
+
+        <button type="button" className="home-card" onClick={onReading}>
+          <span className="big">私はパンを</span>
+          <h2>{s.deck.reading}</h2>
+          <p>{s.home.readingBlurb(ALL_READING_SENTENCES.length)}</p>
+          <Progress summary={readingSummary} unit={s.home.unit.sentences} />
+        </button>
       </div>
 
       <div className="row between">
@@ -299,6 +310,25 @@ export function Home({
           )}
         </div>
         {notice && <span className="faint">{notice}</span>}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A first session leaves everything in box 1, which is "learning" rather than
+ * "known" — so showing only the known count reads as no progress at all after
+ * a session that went fine. Both are shown, with a bar.
+ */
+function StageProgress({ stage, stats }: { stage: Stage; stats: Record<string, ItemStats> }) {
+  const s = useStrings();
+  const { known, learning, total } = stageProgress(stage, stats);
+  return (
+    <div style={{ maxWidth: 320, marginTop: 8 }}>
+      <MasteryBar known={known} learning={learning} total={total} />
+      <div className="faint" style={{ marginTop: 6 }}>
+        {s.home.known(known, total)}
+        {learning > 0 && s.progress.learning(learning)}
       </div>
     </div>
   );

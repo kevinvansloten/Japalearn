@@ -6,6 +6,7 @@ import type {
   DuolingoConfig,
   KanaConfig,
   ParticleConfig,
+  ReadingConfig,
   KanjiConfig,
   WordConfig,
 } from './lib/buildCards';
@@ -34,6 +35,7 @@ import { DuolingoSetup } from './components/DuolingoSetup';
 import { Browse } from './components/Browse';
 import { Progress } from './components/Progress';
 import type { BrowseDeck } from './lib/browse';
+import { ReadingSetup } from './components/ReadingSetup';
 import { Quiz } from './components/Quiz';
 import { LanguagePicker } from './components/ui';
 import { LanguageProvider, useStrings } from './i18n';
@@ -108,9 +110,17 @@ const DEFAULT_PARTICLES: ParticleConfig = {
   order: 'shuffled',
 };
 
+const DEFAULT_READING: ReadingConfig = {
+  groupIds: ['statements'],
+  excluded: [],
+  modes: ['meaning'],
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
 type Screen =
   | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
-  | 'duolingo' | 'progress' | 'plan' | 'browse' | 'quiz';
+  | 'duolingo' | 'reading' | 'progress' | 'plan' | 'browse' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -118,7 +128,9 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'duolingo';
+  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
+    | 'duolingo'
+    | 'reading';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -203,6 +215,12 @@ function Learner() {
   };
 
   useEffect(() => savePref('duolingo', duolingoConfig), [duolingoConfig]);
+  const [readingConfig, setReadingConfig] = useState<ReadingConfig>(() => ({
+    ...DEFAULT_READING,
+    ...loadPref<Partial<ReadingConfig>>('reading', {}),
+  }));
+
+  useEffect(() => savePref('reading', readingConfig), [readingConfig]);
   useEffect(() => savePref('particles', particleConfig), [particleConfig]);
   useEffect(() => savePref('conjugation', conjugationConfig), [conjugationConfig]);
   useEffect(() => savePref('words', wordConfig), [wordConfig]);
@@ -215,7 +233,9 @@ function Learner() {
     cards: Card[],
     options: SessionOptions,
     extra: {
-      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'duolingo';
+      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
+        | 'duolingo'
+        | 'reading';
       scheduled?: boolean;
     } = {},
   ) => {
@@ -230,6 +250,7 @@ function Learner() {
     words: wordConfig,
     conjugation: conjugationConfig,
     particles: particleConfig,
+    reading: readingConfig,
   };
 
   // The stage to be getting on with, recomputed alongside the review plan.
@@ -255,10 +276,27 @@ function Learner() {
       conjugationConfig,
       particleConfig,
       pace,
+      readingConfig,
       version,
       s,
     ],
   );
+
+  /**
+   * Studying a stage is the guided form of a review, so it schedules. Starting
+   * it as ordinary practice left the button unable to move the very progress
+   * it was offering: practice never sets a box, and a stage is measured in
+   * boxes.
+   */
+  const startStage = () => {
+    if (!stage) return;
+    start(
+      titleOf(stage, s.lang),
+      buildStageCards(stage, decks, s),
+      { flow: 'mistakes', order: 'shuffled' },
+      { scheduled: true },
+    );
+  };
 
   const goHome = () => {
     setScreen('home');
@@ -305,17 +343,12 @@ function Learner() {
           onConjugation={() => setScreen('conjugation')}
           onParticles={() => setScreen('particles')}
           onDuolingo={() => setScreen('duolingo')}
+          onReading={() => setScreen('reading')}
           onProgress={() => setScreen('progress')}
           onPlan={() => setScreen('plan')}
           onBrowse={() => setScreen('browse')}
           stage={stage}
-          onStartStage={() => {
-            if (!stage) return;
-            start(titleOf(stage, s.lang), buildStageCards(stage, decks, s), {
-              flow: 'mistakes',
-              order: 'shuffled',
-            });
-          }}
+          onStartStage={startStage}
           onReset={() => setVersion((v) => v + 1)}
         />
       )}
@@ -433,6 +466,22 @@ function Learner() {
               cards,
               { flow: duolingoConfig.flow, order: duolingoConfig.order },
               { back: 'duolingo' },
+            )
+          }
+        />
+      )}
+
+      {screen === 'reading' && (
+        <ReadingSetup
+          config={readingConfig}
+          onChange={setReadingConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              s.run.reading,
+              cards,
+              { flow: readingConfig.flow, order: readingConfig.order },
+              { back: 'reading' },
             )
           }
         />

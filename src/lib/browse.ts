@@ -21,6 +21,12 @@ import { ALL_WORDS, WORD_GROUPS, hasKanji } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS, CONJUGATION_GROUPS } from '../data/conjugation';
 import { ALL_PARTICLE_SENTENCES, PARTICLE_GROUPS, filled } from '../data/particles';
 import {
+  ALL_READING_SENTENCES,
+  READING_GROUPS,
+  reading as sentenceKana,
+  written,
+} from '../data/reading';
+import {
   ALL_DUOLINGO_WORDS,
   DUOLINGO_UNITS,
   duolingoItemId,
@@ -45,6 +51,7 @@ export type BrowseDeck =
   | 'words'
   | 'conjugation'
   | 'particles'
+  | 'reading'
   | 'duolingo';
 
 export const BROWSE_DECKS: BrowseDeck[] = [
@@ -54,6 +61,7 @@ export const BROWSE_DECKS: BrowseDeck[] = [
   'words',
   'conjugation',
   'particles',
+  'reading',
   'duolingo',
 ];
 
@@ -217,6 +225,26 @@ function particleSections(s: Strings): Section[] {
   }));
 }
 
+/**
+ * The reading deck is the one place a whole sentence is the entry, so the
+ * reading goes on the second line rather than beside the written form: a
+ * sentence and its kana do not fit side by side.
+ */
+function readingSections(s: Strings): Section[] {
+  return READING_GROUPS.map((group) => ({
+    id: group.id,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
+    lines: group.sentences.map((sentence) => ({
+      itemId: `reading:${written(sentence)}`,
+      jp: written(sentence),
+      reading: sentenceKana(sentence),
+      gloss: sentenceOf(sentence, s.lang),
+      speech: sentenceKana(sentence),
+    })),
+  }));
+}
+
 function duolingoSections(s: Strings): Section[] {
   return DUOLINGO_UNITS.map((unit) => ({
     id: unit.id,
@@ -267,6 +295,8 @@ export function sectionsFor(deck: BrowseDeck, s: Strings = en): Section[] {
       return conjugationSections(s);
     case 'particles':
       return particleSections(s);
+    case 'reading':
+      return readingSections(s);
     case 'duolingo':
       return duolingoSections(s);
   }
@@ -294,6 +324,8 @@ export const deckSize = (deck: BrowseDeck): number => {
       return ALL_VERBS.length + ALL_ADJECTIVES.length;
     case 'particles':
       return ALL_PARTICLE_SENTENCES.length;
+    case 'reading':
+      return ALL_READING_SENTENCES.length;
     case 'duolingo':
       return ALL_DUOLINGO_WORDS.length;
   }

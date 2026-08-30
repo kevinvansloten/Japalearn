@@ -359,40 +359,26 @@ input {
   color: #fff;
 }
 
-.kanji-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.kanji-toggle {
+.item-picker.layout-tile .item-toggle {
   width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--bg-sunken);
-  font-family: var(--jp);
+  min-width: 0;
+  padding: 0;
   font-size: 21px;
-  color: var(--text-faint);
-  display: grid;
-  place-items: center;
-  position: relative;
 }
 
-.kanji-toggle[aria-pressed='true'] {
-  color: var(--text);
-  border-color: var(--line-strong);
-  background: var(--bg-raised);
+.item-picker.layout-block {
+  flex-direction: column;
+  flex-wrap: nowrap;
 }
 
-.kanji-toggle .dot {
-  position: absolute;
-  bottom: 3px;
-  right: 4px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
+.item-picker.layout-block .item-toggle {
+  width: 100%;
+  height: auto;
+  min-height: 40px;
+  justify-items: start;
+  text-align: left;
+  font-size: 15px;
+  padding: 8px 12px;
 }
 
 .item-picker {
@@ -441,30 +427,6 @@ input {
   height: 2px;
   border-radius: 1px;
   background: var(--accent);
-}
-
-.sentence-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.sentence-toggle {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-sunken);
-  font-family: var(--jp);
-  font-size: 15px;
-  color: var(--text-faint);
-  padding: 8px 12px;
-  text-align: left;
-}
-
-.sentence-toggle[aria-pressed='true'] {
-  color: var(--text);
-  border-color: var(--line-strong);
-  background: var(--bg-raised);
 }
 
 /* -------------------------------------------------------------- quiz */
@@ -530,6 +492,21 @@ input {
   line-height: 1.25;
   margin: 8px 0;
   letter-spacing: 0.04em;
+}
+
+/* A whole sentence needs to wrap and sit much smaller than a single glyph. */
+.glyph.sentence {
+  font-size: 30px;
+  line-height: 2.1;
+  margin: 4px 0 10px;
+  letter-spacing: 0.02em;
+}
+
+.glyph.sentence rt {
+  font-size: 0.42em;
+  color: var(--text-dim);
+  /* Keeps the line from jumping when the reading appears. */
+  line-height: 1.1;
 }
 
 .glyph.latin {
@@ -1174,6 +1151,11 @@ input {
     font-size: 32px;
   }
 
+  .glyph.sentence {
+    font-size: 23px;
+    line-height: 2;
+  }
+
   .card {
     padding: 18px 14px;
     border-radius: 14px;
@@ -1210,6 +1192,34 @@ input {
   .review-panel,
   .guide-panel {
     padding: 16px;
+  }
+
+  .panel {
+    padding: 16px 14px;
+  }
+
+  /* Stack the group chip above its Select all / Clear rather than squeezing
+     them side by side. */
+  .group-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .item-picker.layout-tile .item-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 19px;
+  }
+
+  .mode-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .segmented {
+    align-self: flex-start;
   }
 
   .forecast {

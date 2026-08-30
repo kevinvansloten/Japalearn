@@ -34,6 +34,7 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
   const [state, setState] = useState<SessionState>(() => createSession(cards, options));
   const [draft, setDraft] = useState('');
   const [autoAdvance, setAutoAdvance] = useState(true);
+  const [furigana, setFurigana] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
   const hasVoice = useJapaneseVoice();
@@ -56,6 +57,8 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
   useEffect(() => {
     if (state.phase === 'question' && card?.inputMode === 'type') inputRef.current?.focus();
   }, [state.currentId, state.phase, card?.inputMode]);
+
+  useEffect(() => setFurigana(false), [state.currentId]);
 
   // A listening card's prompt is the audio, so play it as the card arrives.
   useEffect(() => {
@@ -210,8 +213,31 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
           >
             <SpeakerIcon size={40} />
           </button>
+        ) : card.promptRuby ? (
+          <div className="glyph sentence">
+            {card.promptRuby.map(([text, ruby], index) =>
+              ruby && furigana ? (
+                <ruby key={index}>
+                  {text}
+                  <rt>{ruby}</rt>
+                </ruby>
+              ) : (
+                <span key={index}>{text}</span>
+              ),
+            )}
+          </div>
         ) : (
           <div className={card.promptScript === 'jp' ? 'glyph' : 'glyph latin'}>{card.prompt}</div>
+        )}
+
+        {card.promptRuby && state.phase === 'question' && (
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => setFurigana((on) => !on)}
+          >
+            {furigana ? 'Hide furigana' : 'Show furigana'}
+          </button>
         )}
         {card.promptNote && <div className="prompt-note">{card.promptNote}</div>}
 

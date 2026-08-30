@@ -30,7 +30,8 @@ import {
 import { speak, useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats, loadPref, savePref } from '../lib/storage';
 import { useStrings } from '../i18n';
-import { Chip, Panel, SpeakerIcon, masteryColour } from './ui';
+import { Chip, Panel, SpeakerIcon } from './ui';
+import { masteryColour } from './DeckPicker';
 
 const SECTIONS: KanaSection[] = ['gojuon', 'dakuten', 'yoon'];
 
@@ -44,6 +45,7 @@ const DECK_NAME: Record<BrowseDeck, (s: ReturnType<typeof useStrings>) => string
   words: (s) => s.deck.wordsShort,
   conjugation: (s) => s.deck.conjugation,
   particles: (s) => s.deck.particles,
+  reading: (s) => s.deck.reading,
   duolingo: (s) => s.deck.duolingoShort,
 };
 
