@@ -28,6 +28,7 @@ import {
   type Line,
 } from '../lib/browse';
 import { speak, useJapaneseVoice } from '../lib/speech';
+import { kanaToRomaji } from '../lib/romaji';
 import { itemAccuracy, loadItemStats, loadPref, savePref } from '../lib/storage';
 import { useStrings } from '../i18n';
 import { Chip, Panel, SpeakerIcon } from './ui';
@@ -55,9 +56,12 @@ interface Props {
   onHome: () => void;
   /** jump straight from here into practising the deck being read */
   onPractise: (deck: BrowseDeck) => void;
+  /** Shared with Duolingo practice, so either screen can change it. */
+  duolingoRomaji: boolean;
+  onDuolingoRomajiChange: (show: boolean) => void;
 }
 
-export function Browse({ onHome, onPractise }: Props) {
+export function Browse({ onHome, onPractise, duolingoRomaji, onDuolingoRomajiChange }: Props) {
   const s = useStrings();
   const stats = useMemo(() => loadItemStats(), []);
   const hasVoice = useJapaneseVoice();
@@ -114,6 +118,9 @@ export function Browse({ onHome, onPractise }: Props) {
       <div className="browse-jp">
         <span className="jp">{line.jp}</span>
         {line.reading && <span className="reading">{line.reading}</span>}
+        {deck === 'duolingo' && duolingoRomaji && line.speech && (
+          <span className="romaji-note">{kanaToRomaji(line.speech)}</span>
+        )}
       </div>
       <div className="browse-gloss">
         <span>{line.gloss}</span>
@@ -191,6 +198,16 @@ export function Browse({ onHome, onPractise }: Props) {
               onChange={(event) => setTo(clamp(Number(event.target.value)))}
             />
           </div>
+        )}
+        {deck === 'duolingo' && (
+          <label className="row" style={{ marginTop: 12, gap: 8, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={duolingoRomaji}
+              onChange={(event) => onDuolingoRomajiChange(event.target.checked)}
+            />
+            {s.setup.showRomaji}
+          </label>
         )}
       </Panel>
 
