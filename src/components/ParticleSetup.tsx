@@ -3,6 +3,8 @@ import { buildParticleCards, particlePool, type ParticleConfig } from '../lib/bu
 import type { Card, InputMode } from '../lib/session';
 import { DeckPicker, SetupHeader, StartBar } from './DeckPicker';
 import { FlowPicker, Panel, Segmented } from './ui';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, sentenceOf } from '../i18n/content';
 
 interface Props {
   config: ParticleConfig;
@@ -12,31 +14,32 @@ interface Props {
 }
 
 export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<ParticleConfig>) => onChange({ ...config, ...update });
-  const cards = buildParticleCards(config);
+  const cards = buildParticleCards(config, s);
 
   const groups = PARTICLE_GROUPS.map((group) => ({
     id: group.id,
-    label: group.label,
-    blurb: group.blurb,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
     items: group.sentences.map((sentence) => ({
       key: sentence.text,
       label: sentence.text,
-      title: sentence.english,
+      title: sentenceOf(sentence, s.lang),
     })),
   }));
 
   return (
     <div className="stack">
       <SetupHeader
-        title="Particles"
-        subtitle={`${particlePool(config).length} sentences`}
+        title={s.deck.particles}
+        subtitle={s.setup.sentenceCount(particlePool(config).length)}
         onHome={onHome}
       />
 
       <DeckPicker
-        title="Which particles?"
-        hint="Grouped by what the particle does, since that is what decides which one a sentence takes."
+        title={s.setup.whichParticles}
+        hint={s.setup.whichParticlesHint}
         groups={groups}
         groupIds={config.groupIds}
         excluded={config.excluded}
@@ -45,21 +48,19 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
         itemLayout="block"
       />
 
-      <Panel title="How should you answer?">
+      <Panel title={s.setup.howAnswer}>
         <div className="row">
           <Segmented<InputMode>
             value={config.inputMode}
             onChange={(inputMode) => patch({ inputMode })}
             options={[
-              { value: 'choice', label: 'Choose' },
-              { value: 'type', label: 'Type' },
+              { value: 'choice', label: s.common.choose },
+              { value: 'type', label: s.common.type },
             ]}
           />
         </div>
         <p className="faint" style={{ marginTop: 10 }}>
-          Some sentences take more than one particle — 学校に行きます and 学校へ行きます are both
-          right. Typing accepts either; multiple choice only ever offers one of them, so there is
-          always exactly one correct option on screen.
+          {s.setup.particleNote}
         </p>
       </Panel>
 
@@ -72,8 +73,8 @@ export function ParticleSetup({ config, onChange, onStart, onHome }: Props) {
 
       <StartBar
         count={cards.length}
-        noun="sentences"
-        empty="Pick at least one group"
+        sentences
+        empty={s.setup.pickAGroup}
         onStart={() => onStart(cards)}
       />
     </div>

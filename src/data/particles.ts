@@ -31,14 +31,20 @@ export interface ParticleSentence {
   collocation: string;
   /** shown on reveal: why this particle and not another */
   why: string;
+  /** the same in Dutch, where it has been written; see NL */
+  whyNl?: string;
   english: string;
+  /** the sentence in Dutch, where it has been written; see NL */
+  dutch?: string;
   groupId: string;
 }
 
 export interface ParticleGroup {
   id: string;
   label: string;
+  labelNl?: string;
   blurb: string;
+  blurbNl?: string;
   sentences: ParticleSentence[];
 }
 
@@ -48,11 +54,22 @@ export const PARTICLES = ['は', 'が', 'を', 'に', 'で', 'と', 'も', 'の'
 /** [text, answer, collocation, why, english, alsoAccepted?] */
 type Row = [string, string, string, string, string, string[]?];
 
-const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
+interface Spec {
+  id: string;
+  label: string;
+  labelNl: string;
+  blurb: string;
+  blurbNl: string;
+  rows: Row[];
+}
+
+const SPECS: Spec[] = [
   {
     id: 'wo',
     label: 'を — the direct object',
+    labelNl: 'を — het lijdend voorwerp',
     blurb: 'What the verb acts on. The most clear-cut particle in the language.',
+    blurbNl: 'Waar het werkwoord op inwerkt. Het meest eenduidige partikel van de taal.',
     rows: [
       ['パン＿食べます。', 'を', 'パンを食べます', 'What is eaten takes を.', 'I eat bread.'],
       ['水＿飲みます。', 'を', '水を飲みます', 'What is drunk takes を.', 'I drink water.'],
@@ -71,7 +88,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'ni',
     label: 'に — where to, when, and where things are',
+    labelNl: 'に — waarheen, wanneer, en waar iets is',
     blurb: 'Destination, a point in time, and the place something exists.',
+    blurbNl: 'Bestemming, een tijdstip, en de plaats waar iets zich bevindt.',
     rows: [
       ['学校＿行きます。', 'に', '学校に行きます', 'Destination with 行く.', 'I go to school.', ['へ']],
       ['日本＿来ました。', 'に', '日本に来ました', 'Destination with 来る.', 'I came to Japan.', ['へ']],
@@ -90,7 +109,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'de',
     label: 'で — where it happens, and what with',
+    labelNl: 'で — waar het gebeurt, en waarmee',
     blurb: 'The place an action occurs, and the means it is done by. The usual rival to に.',
+    blurbNl: 'De plaats waar een handeling plaatsvindt, en het middel waarmee. De gebruikelijke concurrent van に.',
     rows: [
       ['学校＿勉強します。', 'で', '学校で勉強します', 'Where the action happens takes で.', 'I study at school.'],
       ['部屋＿本を読みます。', 'で', '部屋で本を読みます', 'Where the action happens takes で.', 'I read a book in my room.'],
@@ -109,7 +130,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'ga',
     label: 'が — existence, liking and question words',
+    labelNl: 'が — bestaan, houden van en vraagwoorden',
     blurb: 'What exists, what you like or understand, and anything following a question word.',
+    blurbNl: 'Wat er is, wat je leuk vindt of begrijpt, en alles wat op een vraagwoord volgt.',
     rows: [
       ['ねこ＿います。', 'が', 'ねこがいます', 'What exists takes が with いる.', 'There is a cat.'],
       ['本＿あります。', 'が', '本があります', 'What exists takes が with ある.', 'There is a book.'],
@@ -128,7 +151,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'joining',
     label: 'と, の, も — with, of, and also',
+    labelNl: 'と, の, も — met, van, en ook',
     blurb: 'Joining two nouns, saying whose something is, and saying "too".',
+    blurbNl: 'Twee zelfstandige naamwoorden verbinden, zeggen van wie iets is, en "ook" zeggen.',
     rows: [
       ['友だち＿行きます。', 'と', '友だちと行きます', 'Who you do it with takes と.', 'I go with a friend.'],
       ['先生＿話します。', 'と', '先生と話します', 'Who you do it with takes と.', 'I talk with the teacher.'],
@@ -147,7 +172,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'range',
     label: 'から, まで — from and until',
+    labelNl: 'から, まで — van en tot',
     blurb: 'Where something starts and where it stops, in time or in space.',
+    blurbNl: 'Waar iets begint en waar het ophoudt, in tijd of in ruimte.',
     rows: [
       ['九時＿働きます。', 'から', '九時から', 'から marks where something starts.', 'I work from nine.'],
       ['一時＿待ちます。', 'まで', '一時まで待ちます', 'まで marks where something stops.', 'I will wait until one.'],
@@ -161,16 +188,32 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   },
 ];
 
+/**
+ * The Dutch side of a sentence: its translation, and the reason the particle
+ * is what it is. Keyed by the sentence itself, and kept apart from the rows
+ * above so a translation cannot disturb a collocation the tests check against
+ * the filled sentence. Either field may be absent, and falls back to English
+ * on its own.
+ */
+const NL: Record<string, { dutch?: string; why?: string }> = {};
+
+/** The keys the Dutch table above is allowed to use, for the data tests. */
+export const NL_KEYS: string[] = Object.keys(NL);
+
 export const PARTICLE_GROUPS: ParticleGroup[] = SPECS.map((spec) => ({
   id: spec.id,
   label: spec.label,
+  labelNl: spec.labelNl,
   blurb: spec.blurb,
+  blurbNl: spec.blurbNl,
   sentences: spec.rows.map(([text, answer, collocation, why, english, alsoAccepted]) => ({
     text,
     answer,
     collocation,
     why,
+    ...(NL[text]?.why ? { whyNl: NL[text].why } : {}),
     english,
+    ...(NL[text]?.dutch ? { dutch: NL[text].dutch } : {}),
     groupId: spec.id,
     ...(alsoAccepted ? { alsoAccepted } : {}),
   })),

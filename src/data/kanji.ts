@@ -2,12 +2,16 @@ export interface Vocab {
   word: string;
   reading: string;
   meaning: string;
+  /** the same in Dutch, where it has been written; see VOCAB_NL */
+  meaningNl?: string;
 }
 
 export interface KanjiEntry {
   char: string;
   /** accepted English meanings; the first is the canonical one we display */
   meanings: string[];
+  /** the same in Dutch, where they have been written; see MEANINGS_NL */
+  meaningsNl?: string[];
   /** on'yomi, in katakana */
   on: string[];
   /** kun'yomi, in hiragana; okurigana in parentheses, e.g. い(く) */
@@ -19,7 +23,9 @@ export interface KanjiEntry {
 export interface KanjiGroup {
   id: string;
   label: string;
+  labelNl?: string;
   blurb: string;
+  blurbNl?: string;
   kanji: KanjiEntry[];
 }
 
@@ -28,11 +34,22 @@ type Row = [string, string[], string[], string[], Vocab[]];
 
 const v = (word: string, reading: string, meaning: string): Vocab => ({ word, reading, meaning });
 
-const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
+interface Spec {
+  id: string;
+  label: string;
+  labelNl: string;
+  blurb: string;
+  blurbNl: string;
+  rows: Row[];
+}
+
+const SPECS: Spec[] = [
   {
     id: 'numbers',
     label: 'Numbers & money',
+    labelNl: 'Getallen & geld',
     blurb: 'Counting, prices, dates — the first thing you can actually use.',
+    blurbNl: 'Tellen, prijzen, datums — het eerste waar je echt iets aan hebt.',
     rows: [
       ['一', ['one'], ['イチ', 'イツ'], ['ひと(つ)'], [v('一つ', 'ひとつ', 'one thing'), v('一月', 'いちがつ', 'January')]],
       ['二', ['two'], ['ニ'], ['ふた(つ)'], [v('二つ', 'ふたつ', 'two things'), v('二人', 'ふたり', 'two people')]],
@@ -53,7 +70,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'time',
     label: 'Time & days of the week',
+    labelNl: 'Tijd & dagen van de week',
     blurb: 'The 曜日 set, plus the words for telling time.',
+    blurbNl: 'De 曜日-reeks, plus de woorden om de tijd te zeggen.',
     rows: [
       ['日', ['day', 'sun'], ['ニチ', 'ジツ'], ['ひ', 'か'], [v('日曜日', 'にちようび', 'Sunday'), v('今日', 'きょう', 'today')]],
       ['月', ['month', 'moon'], ['ゲツ', 'ガツ'], ['つき'], [v('月曜日', 'げつようび', 'Monday'), v('一か月', 'いっかげつ', 'one month')]],
@@ -76,7 +95,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'people',
     label: 'People & family',
+    labelNl: 'Mensen & familie',
     blurb: 'Who you are talking about, and who you are talking to.',
+    blurbNl: 'Over wie je het hebt, en tegen wie je het hebt.',
     rows: [
       ['人', ['person'], ['ジン', 'ニン'], ['ひと'], [v('日本人', 'にほんじん', 'Japanese person'), v('人', 'ひと', 'person')]],
       ['男', ['man', 'male'], ['ダン', 'ナン'], ['おとこ'], [v('男の人', 'おとこのひと', 'man'), v('男の子', 'おとこのこ', 'boy')]],
@@ -93,7 +114,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'nature',
     label: 'Nature & animals',
+    labelNl: 'Natuur & dieren',
     blurb: 'Weather, landscape, and the animals that show up in every textbook.',
+    blurbNl: 'Weer, landschap, en de dieren die in elk leerboek opduiken.',
     rows: [
       ['山', ['mountain'], ['サン'], ['やま'], [v('山', 'やま', 'mountain'), v('富士山', 'ふじさん', 'Mt. Fuji')]],
       ['川', ['river'], ['セン'], ['かわ'], [v('川', 'かわ', 'river'), v('川口', 'かわぐち', 'river mouth')]],
@@ -111,7 +134,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'position',
     label: 'Position & direction',
+    labelNl: 'Positie & richting',
     blurb: 'Above, below, inside, and the four compass points.',
+    blurbNl: 'Boven, onder, binnen, en de vier windrichtingen.',
     rows: [
       ['上', ['above', 'up', 'on top'], ['ジョウ'], ['うえ', 'あ(がる)', 'のぼ(る)'], [v('上', 'うえ', 'above, on'), v('上手', 'じょうず', 'skilful')]],
       ['下', ['below', 'down', 'under'], ['カ', 'ゲ'], ['した', 'さ(がる)'], [v('下', 'した', 'below, under'), v('下手', 'へた', 'unskilful')]],
@@ -130,7 +155,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'verbs',
     label: 'Everyday verbs',
+    labelNl: 'Alledaagse werkwoorden',
     blurb: 'The verbs you meet in chapter one and never stop using.',
+    blurbNl: 'De werkwoorden die je in hoofdstuk één tegenkomt en blijft gebruiken.',
     rows: [
       ['行', ['to go'], ['コウ'], ['い(く)', 'おこな(う)'], [v('行く', 'いく', 'to go'), v('旅行', 'りょこう', 'travel')]],
       ['来', ['to come'], ['ライ'], ['く(る)'], [v('来る', 'くる', 'to come'), v('来年', 'らいねん', 'next year')]],
@@ -152,7 +179,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'adjectives',
     label: 'Adjectives & size',
+    labelNl: 'Bijvoeglijke naamwoorden & formaat',
     blurb: 'Big, small, new, old — describing things.',
+    blurbNl: 'Groot, klein, nieuw, oud — dingen beschrijven.',
     rows: [
       ['大', ['big', 'large'], ['ダイ', 'タイ'], ['おお(きい)'], [v('大きい', 'おおきい', 'big'), v('大学', 'だいがく', 'university')]],
       ['小', ['small', 'little'], ['ショウ'], ['ちい(さい)', 'こ'], [v('小さい', 'ちいさい', 'small'), v('小学校', 'しょうがっこう', 'primary school')]],
@@ -169,7 +198,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'places',
     label: 'Places & things',
+    labelNl: 'Plaatsen & dingen',
     blurb: 'School, work, the station, and getting around.',
+    blurbNl: 'School, werk, het station, en je verplaatsen.',
     rows: [
       ['国', ['country'], ['コク'], ['くに'], [v('外国', 'がいこく', 'foreign country'), v('国', 'くに', 'country')]],
       ['学', ['study', 'learning'], ['ガク'], ['まな(ぶ)'], [v('学生', 'がくせい', 'student'), v('大学', 'だいがく', 'university')]],
@@ -188,7 +219,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'body',
     label: 'Body & other basics',
+    labelNl: 'Lichaam & andere basis',
     blurb: 'Parts of the body, plus a few high-frequency leftovers.',
+    blurbNl: 'Lichaamsdelen, plus een paar veelvoorkomende restanten.',
     rows: [
       ['目', ['eye'], ['モク'], ['め'], [v('目', 'め', 'eye'), v('目上', 'めうえ', 'one’s senior')]],
       ['耳', ['ear'], ['ジ'], ['みみ'], [v('耳', 'みみ', 'ear'), v('耳鼻科', 'じびか', 'ENT clinic')]],
@@ -204,19 +237,41 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   },
 ];
 
+/**
+ * Dutch meanings, keyed by the kanji they belong to. Kept apart from the rows
+ * above so a translation can be added without disturbing a table the tests
+ * check character by character, and so what is still missing is obvious at a
+ * glance. Anything absent falls back to the English meanings.
+ */
+const MEANINGS_NL: Record<string, string[]> = {};
+
+/** Dutch meanings for the example words, keyed by the word. */
+const VOCAB_NL: Record<string, string> = {};
+
 export const KANJI_GROUPS: KanjiGroup[] = SPECS.map((spec) => ({
   id: spec.id,
   label: spec.label,
+  labelNl: spec.labelNl,
   blurb: spec.blurb,
+  blurbNl: spec.blurbNl,
   kanji: spec.rows.map(([char, meanings, on, kun, vocab]) => ({
     char,
     meanings,
+    ...(MEANINGS_NL[char] ? { meaningsNl: MEANINGS_NL[char] } : {}),
     on,
     kun,
-    vocab,
+    vocab: vocab.map((word) =>
+      VOCAB_NL[word.word] ? { ...word, meaningNl: VOCAB_NL[word.word] } : word,
+    ),
     groupId: spec.id,
   })),
 }));
+
+/** The keys the Dutch tables above are allowed to use, for the data tests. */
+export const NL_KEYS = {
+  meanings: Object.keys(MEANINGS_NL),
+  vocab: Object.keys(VOCAB_NL),
+};
 
 export const ALL_KANJI: KanjiEntry[] = KANJI_GROUPS.flatMap((g) => g.kanji);
 

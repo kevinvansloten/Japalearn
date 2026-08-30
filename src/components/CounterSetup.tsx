@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { COUNTER_GROUPS } from '../data/counters';
 import {
-  COUNTER_MODE_BLURB,
-  COUNTER_MODE_LABEL,
   buildCounterCards,
   counterPool,
   type CounterConfig,
@@ -21,6 +19,8 @@ import {
   type ModeOption,
 } from './DeckPicker';
 import { FlowPicker } from './ui';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, meaningOf } from '../i18n/content';
 
 const MODES: CounterMode[] = ['reading', 'meaning', 'listening'];
 
@@ -32,6 +32,7 @@ interface Props {
 }
 
 export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<CounterConfig>) => onChange({ ...config, ...update });
   const stats = useMemo(() => loadItemStats(), []);
   const hasVoice = useJapaneseVoice();
@@ -40,16 +41,16 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
     ? config
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
-  const cards = buildCounterCards(usable);
+  const cards = buildCounterCards(usable, s);
 
   const groups = COUNTER_GROUPS.map((group) => ({
     id: group.id,
-    label: group.label,
-    blurb: group.blurb,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
     items: group.items.map((item) => ({
       key: item.form,
       label: item.form,
-      title: `${item.form} (${item.reading}) — ${item.meaning}`,
+      title: `${item.form} (${item.reading}) — ${meaningOf(item, s.lang)}`,
       dot: masteryColour(itemAccuracy(stats[`counter:${item.form}`])),
       flag: item.irregular,
     })),
@@ -57,34 +58,34 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
 
   const modes: ModeOption<CounterMode>[] = MODES.map((mode) => ({
     id: mode,
-    label: COUNTER_MODE_LABEL[mode],
-    blurb: COUNTER_MODE_BLURB[mode],
+    label: s.counterMode.label[mode],
+    blurb: s.counterMode.blurb[mode],
     ...(mode === 'listening' && !hasVoice
-      ? { unavailable: 'Needs a Japanese voice installed on this device.' }
+      ? { unavailable: s.setup.needsVoice }
       : {}),
   }));
 
   return (
     <div className="stack">
       <SetupHeader
-        title="Counters, dates & times"
-        subtitle={`${counterPool(usable).length} selected · ${cards.length} cards`}
+        title={s.deck.counters}
+        subtitle={s.setup.countersSelected(counterPool(usable).length, cards.length)}
         onHome={onHome}
       />
 
       <DeckPicker
-        title="What do you want to drill?"
-        hint="Turn on the sets you are working on, then switch off anything you already have."
+        title={s.setup.whatToDrill}
+        hint={s.setup.whatToDrillHint}
         groups={groups}
         groupIds={config.groupIds}
         excluded={config.excluded}
         onGroups={(groupIds) => patch({ groupIds })}
         onExcluded={(excluded) => patch({ excluded })}
-        footnote="A dash above an item marks a sound change — 六本 rather than 六ほん."
+        footnote={s.setup.irregularNote}
       />
 
       <ModePicker<CounterMode>
-        hint="Pick any combination."
+        hint={s.setup.anyCombination}
         modes={modes}
         selected={usable.modes}
         inputModes={config.inputModes}
@@ -104,7 +105,7 @@ export function CounterSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <StartBar count={cards.length} empty="Pick at least one set" onStart={() => onStart(cards)} />
+      <StartBar count={cards.length} empty={s.setup.pickASet} onStart={() => onStart(cards)} />
     </div>
   );
 }

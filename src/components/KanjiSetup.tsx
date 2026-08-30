@@ -1,13 +1,6 @@
 import { useMemo } from 'react';
 import { KANJI_GROUPS } from '../data/kanji';
-import {
-  KANJI_MODE_BLURB,
-  KANJI_MODE_LABEL,
-  buildKanjiCards,
-  kanjiPool,
-  type KanjiConfig,
-  type KanjiMode,
-} from '../lib/buildCards';
+import { buildKanjiCards, kanjiPool, type KanjiConfig, type KanjiMode } from '../lib/buildCards';
 import type { Card } from '../lib/session';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
@@ -21,6 +14,8 @@ import {
   type ModeOption,
 } from './DeckPicker';
 import { FlowPicker } from './ui';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, meaningsOf } from '../i18n/content';
 
 const MODES: KanjiMode[] = ['meaning', 'reading', 'recall', 'vocab', 'listening'];
 
@@ -32,6 +27,7 @@ interface Props {
 }
 
 export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<KanjiConfig>) => onChange({ ...config, ...update });
   const stats = useMemo(() => loadItemStats(), []);
   const hasVoice = useJapaneseVoice();
@@ -42,40 +38,40 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
     ? config
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
-  const cards = buildKanjiCards(usable);
+  const cards = buildKanjiCards(usable, s);
 
   const groups = KANJI_GROUPS.map((group) => ({
     id: group.id,
-    label: group.label,
-    blurb: group.blurb,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
     items: group.kanji.map((k) => ({
       key: k.char,
       label: k.char,
-      title: `${k.char} — ${k.meanings.join(', ')}`,
+      title: `${k.char} — ${meaningsOf(k, s.lang).join(', ')}`,
       dot: masteryColour(itemAccuracy(stats[`kanji:${k.char}`])),
     })),
   }));
 
   const modes: ModeOption<KanjiMode>[] = MODES.map((mode) => ({
     id: mode,
-    label: KANJI_MODE_LABEL[mode],
-    blurb: KANJI_MODE_BLURB[mode],
+    label: s.kanjiMode.label[mode],
+    blurb: s.kanjiMode.blurb[mode],
     ...(mode === 'listening' && !hasVoice
-      ? { unavailable: 'Needs a Japanese voice installed on this device.' }
+      ? { unavailable: s.setup.needsVoice }
       : {}),
   }));
 
   return (
     <div className="stack">
       <SetupHeader
-        title="Kanji — JLPT N5"
-        subtitle={`${kanjiPool(usable).length} kanji selected · ${cards.length} cards`}
+        title={s.deck.kanji}
+        subtitle={s.setup.kanjiSelected(kanjiPool(usable).length, cards.length)}
         onHome={onHome}
       />
 
       <DeckPicker
-        title="Which kanji?"
-        hint="Turn on the groups you are studying, then switch off individual kanji you already know."
+        title={s.setup.whichKanji}
+        hint={s.setup.whichKanjiHint}
         groups={groups}
         groupIds={config.groupIds}
         excluded={config.excluded}
@@ -85,7 +81,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
       />
 
       <ModePicker<KanjiMode>
-        hint="Pick any combination. Each mode can be typed or multiple choice."
+        hint={s.setup.anyCombinationEach}
         modes={modes}
         selected={usable.modes}
         inputModes={config.inputModes}
@@ -98,7 +94,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
         }
         footnote={
           usable.modes.includes('recall') && config.inputModes.recall === 'type'
-            ? 'Meaning → kanji with typing needs a Japanese IME. Multiple choice works everywhere.'
+            ? s.setup.kanjiImeNote
             : undefined
         }
       />
@@ -110,7 +106,7 @@ export function KanjiSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <StartBar count={cards.length} empty="Pick at least one group" onStart={() => onStart(cards)} />
+      <StartBar count={cards.length} empty={s.setup.pickAGroup} onStart={() => onStart(cards)} />
     </div>
   );
 }

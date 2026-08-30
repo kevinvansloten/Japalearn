@@ -138,6 +138,9 @@ await evaluate(`(() => {
     };
     i += 1;
   }
+  // Pinned, or the language follows whoever is running this: the app opens in
+  // Dutch on a Dutch browser, and the README these end up in is in English.
+  store.prefs.lang = 'en';
   store.prefs.newIntroduced = { date: new Date().toLocaleDateString('en-CA'), count: 12 };
   // The whole first stage known, so the guide sits on step 2.
   for (const row of ['vowels','k','s','t','n','h','m','y','r','w']) {
@@ -218,6 +221,16 @@ await click('Reading');
 await click('Start —');
 await click('Show furigana');
 await shot('reading', 660);
+
+// --------------------------------------------------- 6. the material
+
+// The kana grid, which is the clearest thing the reference screen does and the
+// one that looks least like every other screen in the app.
+await goto(BASE);
+await click('Browse the material');
+await evaluate(`window.scrollTo(0, 300)`);
+await sleep(300);
+await shot('browse', 900);
 
 ws.close();
 edge.kill();

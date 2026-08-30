@@ -18,6 +18,8 @@ export interface CounterItem {
   /** other readings that are also correct */
   alt?: string[];
   meaning: string;
+  /** the same in Dutch, where it has been written; see MEANINGS_NL */
+  meaningNl?: string;
   /** the reading shifts, or is outright irregular */
   irregular?: boolean;
   groupId: string;
@@ -26,18 +28,31 @@ export interface CounterItem {
 export interface CounterGroup {
   id: string;
   label: string;
+  labelNl?: string;
   blurb: string;
+  blurbNl?: string;
   items: CounterItem[];
 }
 
 /** [form, reading, meaning, irregular?, ...alt] */
 type Row = [string, string, string, boolean?, ...string[]];
 
-const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
+interface Spec {
+  id: string;
+  label: string;
+  labelNl: string;
+  blurb: string;
+  blurbNl: string;
+  rows: Row[];
+}
+
+const SPECS: Spec[] = [
   {
     id: 'generic',
     label: 'Things & people',
+    labelNl: 'Dingen & mensen',
     blurb: 'つ for objects and 人 for people — both irregular almost all the way.',
+    blurbNl: 'つ voor voorwerpen en 人 voor mensen — allebei bijna overal onregelmatig.',
     rows: [
       ['一つ', 'ひとつ', 'one thing', true],
       ['二つ', 'ふたつ', 'two things', true],
@@ -64,7 +79,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'shapes',
     label: 'Long, flat & small',
+    labelNl: 'Lang, plat & klein',
     blurb: '本 for long things, 匹 for small animals — and 枚 for flat things, which is refreshingly regular.',
+    blurbNl: '本 voor lange dingen, 匹 voor kleine dieren — en 枚 voor platte dingen, dat verfrissend regelmatig is.',
     rows: [
       ['一本', 'いっぽん', 'one long object', true],
       ['二本', 'にほん', 'two long objects'],
@@ -101,7 +118,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'objects',
     label: 'Cups, books & machines',
+    labelNl: 'Kopjes, boeken & machines',
     blurb: '杯 for drinks, 冊 for books, 台 for machines and vehicles.',
+    blurbNl: '杯 voor drankjes, 冊 voor boeken, 台 voor machines en voertuigen.',
     rows: [
       ['一杯', 'いっぱい', 'one cupful', true],
       ['二杯', 'にはい', 'two cupfuls'],
@@ -138,7 +157,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'age',
     label: 'Age',
+    labelNl: 'Leeftijd',
     blurb: '歳 for years old — and 二十歳, which ignores the pattern entirely.',
+    blurbNl: '歳 voor jaren oud — en 二十歳, dat zich niets van het patroon aantrekt.',
     rows: [
       ['一歳', 'いっさい', 'one year old', true],
       ['二歳', 'にさい', 'two years old'],
@@ -156,7 +177,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'days',
     label: 'Days of the month',
+    labelNl: 'Dagen van de maand',
     blurb: 'The first ten are their own words, and 20th is はつか. Everything else is regular.',
+    blurbNl: 'De eerste tien zijn eigen woorden, en de 20e is はつか. De rest is regelmatig.',
     rows: [
       ['一日', 'ついたち', '1st of the month', true],
       ['二日', 'ふつか', '2nd of the month', true],
@@ -178,7 +201,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'time',
     label: 'Telling the time',
+    labelNl: 'De tijd zeggen',
     blurb: '時 for hours and 分 for minutes. 4, 7 and 9 o’clock are the ones that catch people.',
+    blurbNl: '時 voor uren en 分 voor minuten. 4, 7 en 9 uur zijn de struikelblokken.',
     rows: [
       ['一時', 'いちじ', "one o'clock"],
       ['二時', 'にじ', "two o'clock"],
@@ -209,7 +234,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'months',
     label: 'Months',
+    labelNl: 'Maanden',
     blurb: 'がつ throughout, but April, July and September do not use the number you expect.',
+    blurbNl: 'Overal がつ, maar april, juli en september gebruiken niet het getal dat je verwacht.',
     rows: [
       ['一月', 'いちがつ', 'January'],
       ['二月', 'にがつ', 'February'],
@@ -228,7 +255,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'big',
     label: 'Hundreds & thousands',
+    labelNl: 'Honderden & duizenden',
     blurb: '300, 600 and 800 shift, and so do 3000 and 8000. Prices depend on these.',
+    blurbNl: '300, 600 en 800 verschuiven, en 3000 en 8000 ook. Prijzen hangen hiervan af.',
     rows: [
       ['百', 'ひゃく', 'one hundred'],
       ['二百', 'にひゃく', 'two hundred'],
@@ -252,18 +281,31 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   },
 ];
 
+/**
+ * Dutch meanings, keyed by the written form. Kept apart from the rows above so
+ * a translation can be added without disturbing a table the tests check form
+ * by form. Anything absent falls back to the English meaning.
+ */
+const MEANINGS_NL: Record<string, string> = {};
+
 export const COUNTER_GROUPS: CounterGroup[] = SPECS.map((spec) => ({
   id: spec.id,
   label: spec.label,
+  labelNl: spec.labelNl,
   blurb: spec.blurb,
+  blurbNl: spec.blurbNl,
   items: spec.rows.map(([form, reading, meaning, irregular, ...alt]) => ({
     form,
     reading,
     meaning,
+    ...(MEANINGS_NL[form] ? { meaningNl: MEANINGS_NL[form] } : {}),
     ...(irregular ? { irregular: true } : {}),
     ...(alt.length ? { alt } : {}),
     groupId: spec.id,
   })),
 }));
+
+/** The keys the Dutch table above is allowed to use, for the data tests. */
+export const NL_KEYS: string[] = Object.keys(MEANINGS_NL);
 
 export const ALL_COUNTERS: CounterItem[] = COUNTER_GROUPS.flatMap((g) => g.items);

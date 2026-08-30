@@ -24,6 +24,8 @@ export interface WordEntry {
   reading: string;
   /** accepted English meanings; the first is the canonical one */
   meanings: string[];
+  /** the same in Dutch, where it has been written; see MEANINGS_NL */
+  meaningsNl?: string[];
   kind: WordKind;
   groupId: string;
 }
@@ -31,18 +33,31 @@ export interface WordEntry {
 export interface WordGroup {
   id: string;
   label: string;
+  labelNl?: string;
   blurb: string;
+  blurbNl?: string;
   words: WordEntry[];
 }
 
 /** [word, reading, meanings, kind] */
 type Row = [string, string, string[], WordKind];
 
-const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
+interface Spec {
+  id: string;
+  label: string;
+  labelNl: string;
+  blurb: string;
+  blurbNl: string;
+  rows: Row[];
+}
+
+const SPECS: Spec[] = [
   {
     id: 'pointing',
     label: 'This, that & which',
+    labelNl: 'Dit, dat & welke',
     blurb: 'The こそあど words and the question words. All kana, all constant.',
+    blurbNl: 'De こそあど-woorden en de vraagwoorden. Allemaal kana, allemaal onveranderlijk.',
     rows: [
       ['これ', 'これ', ['this one'], 'pronoun'],
       ['それ', 'それ', ['that one'], 'pronoun'],
@@ -71,7 +86,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'people',
     label: 'People & family',
+    labelNl: 'Mensen & familie',
     blurb: 'Who you are talking about, and what you call your own family versus someone else’s.',
+    blurbNl: 'Over wie je het hebt, en hoe je je eigen familie noemt tegenover die van een ander.',
     rows: [
       ['私', 'わたし', ['I', 'me'], 'pronoun'],
       ['あなた', 'あなた', ['you'], 'pronoun'],
@@ -96,7 +113,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'things',
     label: 'Things around you',
+    labelNl: 'Dingen om je heen',
     blurb: 'The objects that fill a beginner textbook: desks, umbrellas, keys, newspapers.',
+    blurbNl: 'De voorwerpen waar elk beginnersboek vol mee staat: bureaus, paraplus, sleutels, kranten.',
     rows: [
       ['ペン', 'ペン', ['pen'], 'noun'],
       ['えんぴつ', 'えんぴつ', ['pencil'], 'noun'],
@@ -129,7 +148,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'places',
     label: 'Places',
+    labelNl: 'Plaatsen',
     blurb: 'Where you go and the rooms you are in.',
+    blurbNl: 'Waar je heen gaat en in welke ruimtes je bent.',
     rows: [
       ['うち', 'うち', ['home'], 'noun'],
       ['家', 'いえ', ['house'], 'noun'],
@@ -154,7 +175,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'when',
     label: 'Time words',
+    labelNl: 'Tijdwoorden',
     blurb: 'Today, tomorrow, last week — the words you need before you can say anything happened.',
+    blurbNl: 'Vandaag, morgen, vorige week — de woorden die je nodig hebt voordat je kunt zeggen dat er iets gebeurd is.',
     rows: [
       ['今日', 'きょう', ['today'], 'noun'],
       ['明日', 'あした', ['tomorrow'], 'noun'],
@@ -180,7 +203,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'food',
     label: 'Food & drink',
+    labelNl: 'Eten & drinken',
     blurb: 'Meals, ingredients and what you order.',
+    blurbNl: 'Maaltijden, ingrediënten en wat je bestelt.',
     rows: [
       ['ご飯', 'ごはん', ['rice', 'meal'], 'noun'],
       ['パン', 'パン', ['bread'], 'noun'],
@@ -205,7 +230,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'verbs',
     label: 'Verbs',
+    labelNl: 'Werkwoorden',
     blurb: 'The verbs that appear in chapter one and never stop being useful.',
+    blurbNl: 'De werkwoorden die in hoofdstuk één opduiken en nooit ophouden nuttig te zijn.',
     rows: [
       ['行く', 'いく', ['to go'], 'verb'],
       ['来る', 'くる', ['to come'], 'verb'],
@@ -252,7 +279,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'adjectives',
     label: 'Adjectives',
+    labelNl: 'Bijvoeglijke naamwoorden',
     blurb: 'い-adjectives and な-adjectives, describing everything you own and everywhere you go.',
+    blurbNl: 'い-adjectieven en な-adjectieven, waarmee je alles beschrijft wat je hebt en overal waar je komt.',
     rows: [
       ['大きい', 'おおきい', ['big'], 'adjective'],
       ['小さい', 'ちいさい', ['small'], 'adjective'],
@@ -295,7 +324,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'adverbs',
     label: 'Adverbs & useful words',
+    labelNl: 'Bijwoorden & handige woorden',
     blurb: 'Very, a little, always, not much — the words that adjust everything else.',
+    blurbNl: 'Heel, een beetje, altijd, niet veel — de woorden die al het andere bijstellen.',
     rows: [
       ['とても', 'とても', ['very'], 'adverb'],
       ['少し', 'すこし', ['a little'], 'adverb'],
@@ -320,7 +351,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'phrases',
     label: 'Greetings & set phrases',
+    labelNl: 'Groeten & vaste uitdrukkingen',
     blurb: 'Fixed expressions. Learn them whole rather than word by word.',
+    blurbNl: 'Vaste uitdrukkingen. Leer ze in hun geheel in plaats van woord voor woord.',
     rows: [
       ['おはようございます', 'おはようございます', ['good morning'], 'expression'],
       ['こんにちは', 'こんにちは', ['hello'], 'expression'],
@@ -341,18 +374,37 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   },
 ];
 
+/**
+ * Dutch meanings, keyed by the word they belong to. Kept apart from the rows
+ * above so a translation can be added without disturbing a table the tests
+ * check word by word, and so what is still missing is obvious at a glance.
+ * Anything absent falls back to the English meanings.
+ *
+ * The same rule the English meanings live under applies here: the first entry
+ * is the canonical one shown as the answer, the rest are also accepted, and no
+ * two words may share a canonical meaning — a clash makes the "meaning → word"
+ * card unanswerable. The data tests enforce that in both languages.
+ */
+const MEANINGS_NL: Record<string, string[]> = {};
+
 export const WORD_GROUPS: WordGroup[] = SPECS.map((spec) => ({
   id: spec.id,
   label: spec.label,
+  labelNl: spec.labelNl,
   blurb: spec.blurb,
+  blurbNl: spec.blurbNl,
   words: spec.rows.map(([word, reading, meanings, kind]) => ({
     word,
     reading,
     meanings,
+    ...(MEANINGS_NL[word] ? { meaningsNl: MEANINGS_NL[word] } : {}),
     kind,
     groupId: spec.id,
   })),
 }));
+
+/** The keys the Dutch table above is allowed to use, for the data tests. */
+export const NL_KEYS: string[] = Object.keys(MEANINGS_NL);
 
 export const ALL_WORDS: WordEntry[] = WORD_GROUPS.flatMap((g) => g.words);
 

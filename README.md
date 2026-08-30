@@ -5,7 +5,12 @@ the kanji, the counters and dates that never behave, the core vocabulary, how
 verbs and adjectives conjugate, which particle a sentence takes, and finally
 reading whole sentences. It schedules your reviews, so
 the daily question is "what's due?" rather than "what should I study?" — but
-you can still pick exactly what to drill and how to be asked.
+you can still pick exactly what to drill and how to be asked, or put the
+questions aside and just read the material.
+
+A seventh deck sits alongside them: the Duolingo course's own word list, all
+310 units of it, so the vocabulary that app teaches and then never lets you
+go back over can be drilled here.
 
 Built with React, TypeScript and Vite. Everything runs in the browser — no
 account, no backend, no network calls. Progress is kept in `localStorage`.
@@ -49,7 +54,38 @@ Then open http://localhost:5173.
 | `npm run preview` | Serve the production build |
 | `npm test` | Romaji, session-engine, scheduling and dataset tests |
 | `npm run check:data` | Cross-check the datasets against JMdict (needs network) |
+| `npm run import:duolingo` | Rebuild the Duolingo deck from duome.eu (needs network) |
 | `npm run typecheck` | `tsc --noEmit` |
+
+## Reading it, rather than being asked
+
+Every other screen in this app is a question. This one is not: it lays all
+seven decks out to be read, which is what you want when a word is new and being
+tested on it is premature.
+
+![The syllabary laid out as a grid, hiragana beside katakana with the romaji under each](docs/screenshots/browse.png)
+
+Each deck brings whatever it carries. The kana are drawn as the syllabary
+rather than as a list, because the grid is how anyone learns them. Kanji bring
+their on and kun readings and their example words. Particles are shown filled
+in — a gap is a question, and this page asks none — with the reason underneath.
+
+The conjugation deck is the one that gains most, because every form is derived
+rather than stored and so all of them can be shown at once:
+
+| | |
+| --- | --- |
+| 書く　かく　to write | ます 書きます　·　て 書いて　·　ない 書かない　·　た 書いた |
+
+There is one search box across the deck you are reading, and it matches the
+Japanese, the reading, the meaning and the romaji — so `tegami` finds 手紙 and
+`tabemasu` finds 食べます, without a Japanese keyboard. The Duolingo deck is
+read a range of units at a time for the same reason its practice screen is,
+but search still reaches all 5646 words of it.
+
+The mastery dots are the ones from the setup screens, reading the same saved
+accuracy. Nothing on this page is scored, scheduled or counted — looking a word
+up here does not tell the scheduler you have seen it.
 
 ## Hiragana & katakana
 
@@ -115,8 +151,29 @@ keeps it in the daily box.
 Two rules keep this from becoming a chore. **Due items always come back**, even
 if you have since unticked the group they live in — once you have started
 learning 日 it should not quietly disappear. **New items only come from your
-current selection**, at most 15 a day, so a fresh install is a manageable
-handful rather than 300 cards.
+current selection**, and only up to a budget you set, so a fresh install is a
+manageable handful rather than 300 cards.
+
+New items answer to two ceilings, and each means what its name says. A sitting
+introduces at most **new items a day**; a week introduces at most that many
+times **days a week**. Neither alone works. Capped only by the day, the
+days-a-week setting is decorative — someone who asked for fifteen across four
+days gets a hundred and five by sitting down all seven, and the date the plan
+screen promised was for a course they are no longer taking. Budgeted only by the
+week, the allowance arrives in a heap: a fresh install opens on a week's worth
+at once, a week away is met with the same wall, and even an ordinary week comes
+out lumpy — two big sittings, then two with nothing new left in them.
+
+Together they are smooth. Study the days you promised and you get the same
+handful every time; study more and the week's ceiling holds you to the pace you
+actually chose. A day you skip is not carried forward into a double session —
+the budget is a ceiling, not a debt, and falling behind shows up where it
+belongs, in the date on the plan screen.
+
+Reviews are not capped, because an item that is due is due. What the home screen
+does instead is say what the session costs before you start it — *110 to review ·
+15 new · about 17 minutes* — so a backlog after a fortnight away is a number you
+can decide about rather than a surprise you discover forty cards in.
 
 Scheduling is per item, not per item-and-mode. Knowing 日 → "day" is admittedly
 not the same as knowing 日 → ニチ, but scheduling those separately triples the
@@ -136,6 +193,45 @@ what you have practised and how accurately.
 One session leaves everything in box 1, which is *learning* rather than
 *known*, so the plan shows both. Otherwise a session that went perfectly well
 would read as no progress at all.
+
+## How long it takes
+
+The plan screen asks two questions — how many new items a day, and how many days
+a week — and answers with a date.
+
+It is not a slogan. The pace you set there *is* the budget the reviews spend, so
+the date is a prediction of what the app will actually do rather than
+encouragement. Two properties of the boxes above do the work:
+
+- **Getting one item known takes a fixed run of days.** Introduced today, it
+  returns tomorrow, then three days later, and that third answer is what puts it
+  in box 3. Four days if you never miss it. Miss it and it drops to the bottom
+  and climbs again, so the estimate is paced on your own accuracy.
+- **A steady intake settles at a predictable load.** An item in box `b` waits
+  `BOX_INTERVALS[b]` days, so at `r` introductions a day exactly `r × interval`
+  items sit in that box and exactly `r` fall due each day. Every box below the
+  top therefore contributes `r` reviews a day whatever its interval — which is
+  why doubling the pace roughly doubles the session, and why the screen says so
+  before you commit.
+
+So the screen quotes the cost alongside the date: at 15 a day, seven days a
+week, that is about 110 cards a session and eight weeks; at 25 a day it is five
+weeks and 164 cards. Minutes come from timing your actual sessions rather than a
+guessed seconds-per-card, with a stated default standing in until there is
+enough of your own data to use.
+
+Reviews do not observe rest days — an item due on Thursday is still waiting on
+Saturday — so studying fewer days a week makes each sitting longer rather than
+making the week's work smaller. The screen says that too.
+
+Each of the eighteen stages gets its own projected date, worked in curriculum
+order with every item charged to the first stage that calls for it: the ます-form
+and て-form stages drill the same verbs, and the plan should not bill you twice
+for learning them.
+
+One thing it deliberately does not claim is that you will pass N5. It covers the
+843 items this app teaches, at the same 90% per stage the rest of the app uses.
+The exam also has listening and reading sections that no flashcard deck reaches.
 
 ## Counters, dates & times
 
@@ -184,12 +280,99 @@ answer would be the question.
 Words that also appear as examples in the kanji deck — 食べる, 学校, 今日 —
 share one schedule rather than being asked as two separate items.
 
+## Duolingo — the course word list
+
+Duolingo teaches Japanese vocabulary and then gives you nowhere to go back over
+it: the course has no word list, and no practice mode that targets one. This
+deck is that list — 5646 words across the course's 310 units, in the order
+it teaches them, taken from duome.eu's mirror of the course.
+
+It is a deck in its own right rather than part of the plan above, and that is
+the point of it. The N5 decks are a curated route through the exam; this is a
+record of what one particular course happened to teach, proper nouns and set
+phrases and all. The two overlap by 178 words and are scheduled under
+separate item ids, so drilling one does not quietly move the other's mastery
+dots.
+
+Units are picked as a range rather than as a set, because that is the question
+a Duolingo learner can actually answer: you are on unit 37, so you drill 1–37,
+or just the last ten. Open any unit in the range to switch off the words you
+already have.
+
+| Mode | What it asks |
+| --- | --- |
+| Japanese → meaning | See 食べます, answer "eat" |
+| Meaning → Japanese | See "eat", produce 食べます |
+| Word → reading | See 食べます, answer たべます |
+| Listening | Hear たべます, work out which word it was |
+
+Each can be typed or multiple choice, as everywhere else. What is new is a
+third setting deciding how the Japanese is written — and with it, how much you
+are really being asked:
+
+| Written as | You see | You answer |
+| --- | --- | --- |
+| the course writes it | 食べます | 食べます — needs a Japanese IME |
+| kana | たべます | たべます or `tabemasu` |
+| romaji | `tabemasu` | `tabemasu` or たべます |
+
+The course writes most of its verbs with kanji, which makes "meaning → word"
+unanswerable on a keyboard with no Japanese IME installed. Writing the Japanese
+in kana or romaji instead makes the same deck drillable anywhere, and asking
+for the reading is dropped in those two — there is nothing to work out about
+みず written みず.
+
+### The readings, and the ones there are none of
+
+duome prints a romanisation beside every word, and wherever there is a kanji in
+it that romanisation is pinyin: 読みます comes out `dumimasu`, 肉 `rou`, 人
+`ren`. It is a per-character transliteration through a Chinese reading table,
+so it is dropped on sight rather than trusted. Readings are established three
+other ways, in descending order of confidence:
+
+| How | Words |
+| --- | --- |
+| written in kana already, so the word is its own reading | 2394 |
+| JMdict has that exact written form, or a ます-form conjugates back to it | 2850 |
+| nothing reliable, so no reading is claimed | 402 |
+
+The ます-form pass is the one that needed care. The course teaches 食べます long
+before 食べる, and no dictionary lists a conjugated form, so the dictionary form
+is looked up and then put back through this project's own conjugation rules —
+and a candidate is accepted only when conjugating it reproduces the written form
+character for character. That is what stops 見ます being matched to 見すます,
+which is what searching for it actually returns first.
+
+Two things it does not solve. A written form that is genuinely ambiguous takes
+the dictionary's first ranking — 入ります is はいります here, though いります is
+also a reading of it — and a stem that is itself a common noun cannot be
+searched for at all: asking about 行き returns 行き the noun and 行き先, never
+行く. The second is why the dictionary form is derived by rule from the stem
+rather than looked for, which is also what keeps 買います away from 買い増す — a
+different verb that happens to read かいます.
+
+What is left over is mostly phrases with a particle in the middle — メールを
+読みます, うみに行きます — that no dictionary was ever going to give one reading
+for. Those entries say so rather than guessing, and get meaning and recall
+cards without a reading or listening card, exactly as the kana-only words in
+the N5 deck get no reading card.
+
+```bash
+npm run import:duolingo
+```
+
+fetches the two pages once, caches every dictionary response under
+`node_modules/.cache` so a re-run is free, and writes
+`src/data/duolingo.generated.ts`.
+
 ## Checking the data
 
-The datasets are hand-authored rather than imported. The obvious sources are
-CC-BY-SA, and share-alike data inside an MIT repository is a licensing tangle
-that is painful to unpick later. That keeps the licence clean but puts the
-burden of correctness on the author, so correctness is checked two ways.
+The six N5 datasets are hand-authored rather than imported. The obvious sources
+are CC-BY-SA, and share-alike data inside an MIT repository is a licensing
+tangle that is painful to unpick later. That keeps the licence clean but puts
+the burden of correctness on the author, so correctness is checked two ways.
+(The Duolingo deck above is the exception and is generated; its tests are
+described at the end of this section.)
 
 **Internally**, by `npm test`. Every reading must be kana and must survive the
 app's own romaji conversion, every meaning must satisfy the matcher that grades
@@ -393,20 +576,25 @@ due date into the scheduler.
 
 ```
 src/data/         the seven datasets, the look-alike sets, and the study plan
+src/data/duolingo the imported Duolingo deck, and the parser for its blob
 src/lib/romaji    romaji ⇄ kana conversion and answer matching
 src/lib/session   the session engine (queue, flows, scoring)
 src/lib/buildCards  turns a dataset + settings into practice cards
 src/lib/conjugate the conjugation rules
 src/lib/progress  what "known" means, and the numbers behind the dashboard
+src/lib/forecast  how long the plan takes at a given pace, and what it costs
 src/lib/curriculum  turning a stage into items, progress and a deck of cards
 src/lib/schedule  Leitner boxes: when an item comes back
 src/lib/review    composes the deck for a review session
+src/lib/browse    every deck flattened into lines you can read
 src/lib/storage   localStorage persistence
 src/lib/speech    Japanese text-to-speech, and whether a voice exists
-src/components/   home, progress, the seven setup screens, quiz, results
+src/i18n/         English and Dutch interface text, and the content fallback
+src/components/   home, plan, progress, browse, the eight setup screens, quiz,
+                  results
 src/components/DeckPicker  the picker every setup screen shares
-tests/            romaji, session-engine, scheduling and storage tests
-scripts/          screenshot capture, and the JMdict cross-check
+tests/            romaji, session-engine, scheduling, forecast and storage tests
+scripts/          screenshot capture, the JMdict cross-check, the duome import
 ```
 
 The session engine is deck-agnostic: every deck compiles down to a list of
@@ -420,6 +608,15 @@ unchanged.
 and the session flows. It also asserts two properties across the whole dataset:
 every card accepts at least one answer derivable from what it displays, and every
 multiple-choice question has exactly one correct option.
+
+The imported deck is held to a different standard, because it has to be. The
+hand-written decks are tested for craftsmanship — that no two words claim the
+same gloss, that every reading is typeable. Nothing like that can be asked of
+5646 imported rows, so what is tested there is that the builder copes without
+it: that a gloss shared by a dozen words never puts two defensible options on
+one multiple-choice question, that every word sharing a gloss is accepted when
+the answer is typed, and that an entry with no reading gets the cards it can
+and not the ones it cannot.
 
 ## Ideas for later
 

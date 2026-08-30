@@ -3,6 +3,7 @@ import { KANA_GROUPS } from './data/kana';
 import type {
   ConjugationConfig,
   CounterConfig,
+  DuolingoConfig,
   KanaConfig,
   ParticleConfig,
   ReadingConfig,
@@ -12,17 +13,32 @@ import type {
 import type { Card, SessionOptions } from './lib/session';
 import { planReview, type Decks } from './lib/review';
 import { buildStageCards, currentStage } from './lib/curriculum';
-import { loadItemStats, loadPref, newAllowanceToday, savePref } from './lib/storage';
+import { sessionNewCap, type Pace } from './lib/schedule';
+import { titleOf } from './i18n/content';
+import {
+  loadItemStats,
+  loadPace,
+  loadPref,
+  newAllowanceToday,
+  savePace,
+  savePref,
+} from './lib/storage';
 import { Home } from './components/Home';
+import { Plan } from './components/Plan';
 import { KanaSetup } from './components/KanaSetup';
 import { CounterSetup } from './components/CounterSetup';
 import { KanjiSetup } from './components/KanjiSetup';
 import { WordSetup } from './components/WordSetup';
 import { ConjugationSetup } from './components/ConjugationSetup';
 import { ParticleSetup } from './components/ParticleSetup';
+import { DuolingoSetup } from './components/DuolingoSetup';
+import { Browse } from './components/Browse';
 import { Progress } from './components/Progress';
+import type { BrowseDeck } from './lib/browse';
 import { ReadingSetup } from './components/ReadingSetup';
 import { Quiz } from './components/Quiz';
+import { LanguagePicker } from './components/ui';
+import { LanguageProvider, useStrings } from './i18n';
 
 const DEFAULT_KANA: KanaConfig = {
   scripts: ['hira'],
@@ -70,6 +86,22 @@ const DEFAULT_CONJUGATION: ConjugationConfig = {
   order: 'shuffled',
 };
 
+/**
+ * Five units in rather than the whole course: three hundred and ten units of
+ * vocabulary as an opening screen is not a deck, it is a wall. The range is
+ * the first thing anyone changes anyway.
+ */
+const DEFAULT_DUOLINGO: DuolingoConfig = {
+  fromUnit: 1,
+  toUnit: 5,
+  excluded: [],
+  modes: ['meaning'],
+  inputModes: { meaning: 'type', recall: 'choice', reading: 'type', listening: 'type' },
+  script: 'word',
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
 const DEFAULT_PARTICLES: ParticleConfig = {
   groupIds: ['wo'],
   excluded: [],
@@ -88,7 +120,7 @@ const DEFAULT_READING: ReadingConfig = {
 
 type Screen =
   | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
-  | 'reading' | 'progress' | 'quiz';
+  | 'duolingo' | 'reading' | 'progress' | 'plan' | 'browse' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -96,12 +128,23 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'reading';
+  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
+    | 'duolingo'
+    | 'reading';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
 
 export default function App() {
+  return (
+    <LanguageProvider>
+      <Learner />
+    </LanguageProvider>
+  );
+}
+
+function Learner() {
+  const s = useStrings();
   const [screen, setScreen] = useState<Screen>('home');
   const [run, setRun] = useState<Run | null>(null);
   /** bumped after a progress reset so the home screen re-reads localStorage */
@@ -152,6 +195,26 @@ export default function App() {
     ...loadPref<Partial<ParticleConfig>>('particles', {}),
   }));
 
+  const [duolingoConfig, setDuolingoConfig] = useState<DuolingoConfig>(() => {
+    const saved = loadPref<Partial<DuolingoConfig>>('duolingo', {});
+    return {
+      ...DEFAULT_DUOLINGO,
+      ...saved,
+      inputModes: { ...DEFAULT_DUOLINGO.inputModes, ...saved.inputModes },
+    };
+  });
+
+  // Not a deck setting: the pace is what the new-item budget is spent against.
+  // Saved on the way through rather than in an effect, because the review plan
+  // below reads it back out of storage and would otherwise recompute against
+  // the old value for one render.
+  const [pace, setPaceState] = useState<Pace>(loadPace);
+  const setPace = (next: Pace) => {
+    savePace(next);
+    setPaceState(next);
+  };
+
+  useEffect(() => savePref('duolingo', duolingoConfig), [duolingoConfig]);
   const [readingConfig, setReadingConfig] = useState<ReadingConfig>(() => ({
     ...DEFAULT_READING,
     ...loadPref<Partial<ReadingConfig>>('reading', {}),
@@ -170,7 +233,9 @@ export default function App() {
     cards: Card[],
     options: SessionOptions,
     extra: {
-      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'reading';
+      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
+        | 'duolingo'
+        | 'reading';
       scheduled?: boolean;
     } = {},
   ) => {
@@ -195,7 +260,14 @@ export default function App() {
   // immediately reflects the new schedule.
   const plan = useMemo(
     () =>
-      planReview(decks, loadItemStats(), newAllowanceToday()),
+      planReview(
+        decks,
+        loadItemStats(),
+        // The week's remaining allowance, taken one sitting at a time.
+        sessionNewCap(pace, newAllowanceToday()),
+        Date.now(),
+        s,
+      ),
     [
       kanaConfig,
       kanjiConfig,
@@ -203,8 +275,10 @@ export default function App() {
       wordConfig,
       conjugationConfig,
       particleConfig,
+      pace,
       readingConfig,
       version,
+      s,
     ],
   );
 
@@ -217,8 +291,8 @@ export default function App() {
   const startStage = () => {
     if (!stage) return;
     start(
-      stage.title,
-      buildStageCards(stage, decks),
+      titleOf(stage, s.lang),
+      buildStageCards(stage, decks, s),
       { flow: 'mistakes', order: 'shuffled' },
       { scheduled: true },
     );
@@ -242,9 +316,10 @@ export default function App() {
           <span>JapanLearner</span>
         </button>
         <span className="spacer" />
+        <LanguagePicker />
         {screen !== 'home' && (
           <button type="button" className="btn ghost" onClick={goHome}>
-            Home
+            {s.common.home}
           </button>
         )}
       </header>
@@ -254,7 +329,12 @@ export default function App() {
           key={version}
           plan={plan}
           onReview={() =>
-            start('Review', plan.cards, { flow: 'mistakes', order: 'shuffled' }, { scheduled: true })
+            start(
+              s.run.review,
+              plan.cards,
+              { flow: 'mistakes', order: 'shuffled' },
+              { scheduled: true },
+            )
           }
           onKana={() => setScreen('kana')}
           onKanji={() => setScreen('kanji')}
@@ -262,8 +342,11 @@ export default function App() {
           onWords={() => setScreen('words')}
           onConjugation={() => setScreen('conjugation')}
           onParticles={() => setScreen('particles')}
+          onDuolingo={() => setScreen('duolingo')}
           onReading={() => setScreen('reading')}
           onProgress={() => setScreen('progress')}
+          onPlan={() => setScreen('plan')}
+          onBrowse={() => setScreen('browse')}
           stage={stage}
           onStartStage={startStage}
           onReset={() => setVersion((v) => v + 1)}
@@ -277,7 +360,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Hiragana & katakana',
+              s.run.kana,
               cards,
               { flow: kanaConfig.flow, order: kanaConfig.order },
               { back: 'kana' },
@@ -293,7 +376,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Kanji — N5',
+              s.run.kanji,
               cards,
               { flow: kanjiConfig.flow, order: kanjiConfig.order },
               { back: 'kanji' },
@@ -309,7 +392,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Counters, dates & times',
+              s.run.counters,
               cards,
               { flow: counterConfig.flow, order: counterConfig.order },
               { back: 'counters' },
@@ -325,7 +408,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Vocabulary — N5',
+              s.run.words,
               cards,
               { flow: wordConfig.flow, order: wordConfig.order },
               { back: 'words' },
@@ -341,7 +424,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Conjugation',
+              s.run.conjugation,
               cards,
               { flow: conjugationConfig.flow, order: conjugationConfig.order },
               { back: 'conjugation' },
@@ -357,10 +440,32 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Particles',
+              s.run.particles,
               cards,
               { flow: particleConfig.flow, order: particleConfig.order },
               { back: 'particles' },
+            )
+          }
+        />
+      )}
+
+      {/*
+        * Not part of the guided plan or the review schedule: the plan is a
+        * route through N5, and this deck is a record of what one course
+        * happened to teach. It is drilled on its own terms, and its results
+        * still count towards lifetime accuracy like any other session.
+        */}
+      {screen === 'duolingo' && (
+        <DuolingoSetup
+          config={duolingoConfig}
+          onChange={setDuolingoConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              s.run.duolingo,
+              cards,
+              { flow: duolingoConfig.flow, order: duolingoConfig.order },
+              { back: 'duolingo' },
             )
           }
         />
@@ -373,7 +478,7 @@ export default function App() {
           onHome={goHome}
           onStart={(cards) =>
             start(
-              'Reading',
+              s.run.reading,
               cards,
               { flow: readingConfig.flow, order: readingConfig.order },
               { back: 'reading' },
@@ -382,7 +487,24 @@ export default function App() {
         />
       )}
 
+      {/*
+        * The reference screen reads every deck but owns none of them, so the
+        * only thing it hands back is which deck you were reading — the setup
+        * screen for that deck picks it up from there.
+        */}
+      {screen === 'browse' && (
+        <Browse
+          key={version}
+          onHome={goHome}
+          onPractise={(browsed: BrowseDeck) => setScreen(browsed)}
+        />
+      )}
+
       {screen === 'progress' && <Progress key={version} onHome={goHome} />}
+
+      {screen === 'plan' && (
+        <Plan key={version} pace={pace} onPace={setPace} onHome={goHome} />
+      )}
 
       {screen === 'quiz' && run && (
         <Quiz

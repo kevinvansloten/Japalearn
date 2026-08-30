@@ -24,7 +24,9 @@ export interface ReadingSentence {
 export interface ReadingGroup {
   id: string;
   label: string;
+  labelNl?: string;
   blurb: string;
+  blurbNl?: string;
   sentences: ReadingSentence[];
 }
 
@@ -38,11 +40,20 @@ export const reading = (s: ReadingSentence): string =>
 
 type Row = [Segment[], string];
 
-const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
+const SPECS: {
+  id: string;
+  label: string;
+  labelNl: string;
+  blurb: string;
+  blurbNl: string;
+  rows: Row[];
+}[] = [
   {
     id: 'statements',
     label: 'Everyday statements',
+    labelNl: 'Alledaagse zinnen',
     blurb: 'Who does what to what. The pattern most sentences are built on.',
+    blurbNl: 'Wie doet wat met wat. Het patroon waarop de meeste zinnen zijn gebouwd.',
     rows: [
       [[['私', 'わたし'], ['は'], ['毎日', 'まいにち'], ['パン'], ['を'], ['食', 'た'], ['べます'], ['。']],
         'I eat bread every day.'],
@@ -65,7 +76,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'routine',
     label: 'Times and routine',
+    labelNl: 'Tijden en routine',
     blurb: 'When things happen, and what you do every day.',
+    blurbNl: 'Wanneer dingen gebeuren, en wat je elke dag doet.',
     rows: [
       [[['私', 'わたし'], ['は'], ['七時', 'しちじ'], ['に'], ['起', 'お'], ['きます'], ['。']],
         'I get up at seven.'],
@@ -84,7 +97,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'going',
     label: 'Going places',
+    labelNl: 'Ergens heen',
     blurb: 'Where you are going, how you get there, and what is where.',
+    blurbNl: 'Waar je heen gaat, hoe je er komt, en wat waar is.',
     rows: [
       [[['私', 'わたし'], ['は'], ['学校', 'がっこう'], ['に'], ['行', 'い'], ['きます'], ['。']],
         'I go to school.'],
@@ -107,7 +122,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'describing',
     label: 'Describing things',
+    labelNl: 'Dingen beschrijven',
     blurb: 'Adjectives in place, including the negative and the past.',
+    blurbNl: 'Bijvoeglijke naamwoorden op hun plek, ook ontkennend en in de verleden tijd.',
     rows: [
       [[['この'], ['本', 'ほん'], ['は'], ['面白', 'おもしろ'], ['いです'], ['。']],
         'This book is interesting.'],
@@ -128,7 +145,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
   {
     id: 'questions',
     label: 'Questions',
+    labelNl: 'Vragen',
     blurb: 'The question words in real sentences, all ending in か.',
+    blurbNl: 'De vraagwoorden in echte zinnen, allemaal eindigend op か.',
     rows: [
       [[['これは'], ['何', 'なん'], ['ですか'], ['。']], 'What is this?'],
       [[['だれが'], ['来', 'き'], ['ますか'], ['。']], 'Who is coming?'],
@@ -147,7 +166,9 @@ const SPECS: { id: string; label: string; blurb: string; rows: Row[] }[] = [
 export const READING_GROUPS: ReadingGroup[] = SPECS.map((spec) => ({
   id: spec.id,
   label: spec.label,
+  labelNl: spec.labelNl,
   blurb: spec.blurb,
+  blurbNl: spec.blurbNl,
   sentences: spec.rows.map(([segments, english]) => ({
     segments,
     english,

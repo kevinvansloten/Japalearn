@@ -5,10 +5,19 @@
  * group you switch off, a mode list with a type-or-choose toggle beside each,
  * and a start button that counts the cards. They differed only in what the
  * items look like.
+ *
+ * The labels a caller passes in are already translated, because only the
+ * caller knows which deck's names they are. The furniture around them — Home,
+ * Type, Choose, the Start button's own wording — belongs to this file, so it
+ * reads the bundle itself rather than making seven screens pass the same four
+ * strings down.
  */
 import type { ReactNode } from 'react';
 import type { InputMode } from '../lib/session';
+import { useStrings } from '../i18n';
 import { Chip, ModeCard, Panel, Segmented, SelectAll } from './ui';
+
+export { masteryColour } from './ui';
 
 export interface PickerItem {
   /** what goes in the config's `excluded` list */
@@ -40,6 +49,7 @@ export function SetupHeader({
   subtitle: string;
   onHome: () => void;
 }) {
+  const s = useStrings();
   return (
     <div className="row between">
       <div>
@@ -47,7 +57,7 @@ export function SetupHeader({
         <div className="faint">{subtitle}</div>
       </div>
       <button type="button" className="btn ghost" onClick={onHome}>
-        Home
+        {s.common.home}
       </button>
     </div>
   );
@@ -182,8 +192,9 @@ export function ModePicker<M extends string>({
   onInputMode: (mode: M, input: InputMode) => void;
   footnote?: ReactNode;
 }) {
+  const s = useStrings();
   return (
-    <Panel title="How should you be asked?" hint={hint}>
+    <Panel title={s.setup.howAsked} hint={hint}>
       <div className="mode-list">
         {modes.map((mode) => (
           <ModeCard
@@ -199,8 +210,8 @@ export function ModePicker<M extends string>({
                   value={inputModes[mode.id]}
                   onChange={(value) => onInputMode(mode.id, value)}
                   options={[
-                    { value: 'type', label: 'Type' },
-                    { value: 'choice', label: 'Choose' },
+                    { value: 'type', label: s.common.type },
+                    { value: 'choice', label: s.common.choose },
                   ]}
                 />
               )
@@ -219,16 +230,23 @@ export function ModePicker<M extends string>({
 
 export function StartBar({
   count,
-  noun = 'cards',
+  sentences = false,
   empty,
   onStart,
 }: {
   count: number;
-  noun?: string;
+  /**
+   * Counting sentences rather than cards. A flag rather than the noun itself:
+   * "Start — 12 sentences" is one string per language, not a template plus a
+   * word, because the two do not come apart the same way in every language.
+   */
+  sentences?: boolean;
   /** what to say when nothing is selected */
   empty: string;
   onStart: () => void;
 }) {
+  const s = useStrings();
+  const label = sentences ? s.setup.startSentences(count) : s.setup.start(count);
   return (
     <div className="row">
       <button
@@ -237,18 +255,10 @@ export function StartBar({
         disabled={count === 0}
         onClick={onStart}
       >
-        {count > 0 ? `Start — ${count} ${noun}` : empty}
+        {count > 0 ? label : empty}
       </button>
     </div>
   );
-}
-
-/** Shared by every deck that shows a mastery dot on its items. */
-export function masteryColour(accuracy: number | null): string | undefined {
-  if (accuracy === null) return undefined;
-  if (accuracy >= 80) return 'var(--good)';
-  if (accuracy >= 50) return '#e0b341';
-  return 'var(--bad)';
 }
 
 /** Add or remove a value, the operation every setup screen was redefining. */

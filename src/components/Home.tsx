@@ -5,14 +5,23 @@ import { ALL_KANJI } from '../data/kanji';
 import { ALL_WORDS } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
+import { ALL_DUOLINGO_WORDS, DUOLINGO_UNITS, duolingoItemId } from '../data/duolingo';
 import { ALL_READING_SENTENCES, written } from '../data/reading';
 import { CURRICULUM } from '../data/curriculum';
 import type { Stage } from '../data/curriculum';
 import { stageNumber, stageProgress } from '../lib/curriculum';
 import type { ReviewPlan } from '../lib/review';
 import { describeGap, nextDueAt } from '../lib/schedule';
-import type { ItemStats } from '../lib/storage';
-import { exportProgress, importProgress, loadItemStats, resetProgress } from '../lib/storage';
+import {
+  exportProgress,
+  importProgress,
+  loadItemStats,
+  resetProgress,
+  secondsPerCard,
+  type ItemStats,
+} from '../lib/storage';
+import { useStrings } from '../i18n';
+import { goalOf, titleOf } from '../i18n/content';
 import { MasteryBar } from './ui';
 
 interface Props {
@@ -24,8 +33,11 @@ interface Props {
   onWords: () => void;
   onConjugation: () => void;
   onParticles: () => void;
+  onDuolingo: () => void;
   onReading: () => void;
   onProgress: () => void;
+  onPlan: () => void;
+  onBrowse: () => void;
   /** the stage the learner is on, or null once the plan is finished */
   stage: Stage | null;
   onStartStage: () => void;
@@ -47,28 +59,35 @@ export function Home({
   onWords,
   onConjugation,
   onParticles,
+  onDuolingo,
   onReading,
   onProgress,
+  onPlan,
+  onBrowse,
   stage,
   onStartStage,
   onReset,
 }: Props) {
+  const s = useStrings();
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState('');
   const stats = useMemo(() => loadItemStats(), []);
   const now = Date.now();
   const upcoming = nextDueAt(stats, now);
+  // What the session in front of you actually costs. A backlog after a week
+  // away is a big number however it is dressed up, so say the number.
+  const minutes = Math.max(1, Math.round((plan.cards.length * secondsPerCard().seconds) / 60));
 
   const summarise = (ids: string[]): Summary => {
     let right = 0;
     let wrong = 0;
     let seen = 0;
     for (const id of ids) {
-      const s = stats[id];
-      if (!s || s.right + s.wrong === 0) continue;
+      const stat = stats[id];
+      if (!stat || stat.right + stat.wrong === 0) continue;
       seen += 1;
-      right += s.right;
-      wrong += s.wrong;
+      right += stat.right;
+      wrong += stat.wrong;
     }
     return {
       seen,
@@ -83,48 +102,62 @@ export function Home({
   const kanji = summarise(ALL_KANJI.map((k) => `kanji:${k.char}`));
   const counters = summarise(ALL_COUNTERS.map((c) => `counter:${c.form}`));
   const words = summarise(ALL_WORDS.map((w) => `vocab:${w.word}`));
-  const readingSummary = summarise(ALL_READING_SENTENCES.map((s) => `reading:${written(s)}`));
-  const particles = summarise(ALL_PARTICLE_SENTENCES.map((s) => `particle:${s.text}`));
+  const particles = summarise(
+    ALL_PARTICLE_SENTENCES.map((sentence) => `particle:${sentence.text}`),
+  );
   const conjugation = summarise(
     [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   );
-  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen + particles.seen + readingSummary.seen > 0;
+  const readingSummary = summarise(
+    ALL_READING_SENTENCES.map((sentence) => `reading:${written(sentence)}`),
+  );
+  const duolingo = summarise(ALL_DUOLINGO_WORDS.map(duolingoItemId));
+  const anyProgress =
+    kana.seen +
+      kanji.seen +
+      counters.seen +
+      words.seen +
+      conjugation.seen +
+      particles.seen +
+      readingSummary.seen +
+      duolingo.seen >
+    0;
 
   return (
     <div className="stack">
       <p className="hint" style={{ margin: 0, maxWidth: 560 }}>
-        Seven decks covering N5, from the kana up to reading whole sentences. Review what is
-        due, follow the plan, or pick a deck and drill exactly what you choose. Review what is due, or pick a deck
-        and drill exactly what you choose.
+        {s.home.intro}
       </p>
 
       <section className="guide-panel">
         <div>
           {stage ? (
             <>
-              <div className="faint">
-                Step {stageNumber(stage)} of {CURRICULUM.length}
-              </div>
-              <h2>{stage.title}</h2>
-              <p className="hint">{stage.goal}</p>
+              <div className="faint">{s.home.step(stageNumber(stage), CURRICULUM.length)}</div>
+              <h2>{titleOf(stage, s.lang)}</h2>
+              <p className="hint">{goalOf(stage, s.lang)}</p>
               <StageProgress stage={stage} stats={stats} />
             </>
           ) : (
             <>
-              <h2>You have been through the whole plan</h2>
-              <p className="hint">
-                Keep reviewing, or pick any deck and drill whatever you like.
-              </p>
+              <h2>{s.home.planDone}</h2>
+              <p className="hint">{s.home.planDoneHint}</p>
             </>
           )}
         </div>
         <div className="row">
+          <button type="button" className="btn ghost" onClick={onPlan}>
+            {s.plan.nav}
+          </button>
           <button type="button" className="btn ghost" onClick={onProgress}>
-            See progress
+            {s.home.seeProgress}
+          </button>
+          <button type="button" className="btn ghost" onClick={onBrowse}>
+            {s.browse.nav}
           </button>
           {stage && (
             <button type="button" className="btn big" onClick={onStartStage}>
-              Study this
+              {s.home.studyThis}
             </button>
           )}
         </div>
@@ -132,32 +165,34 @@ export function Home({
 
       <section className="review-panel" data-ready={plan.cards.length > 0}>
         <div>
-          <h2>{plan.cards.length ? 'Ready to review' : 'Nothing due'}</h2>
+          <h2>{plan.cards.length ? s.home.readyToReview : s.home.nothingDue}</h2>
           {plan.cards.length ? (
             <p className="hint">
               {plan.due > 0 && (
                 <>
-                  <b>{plan.due}</b> to review
+                  <b>{plan.due}</b> {s.home.toReview}
                 </>
               )}
               {plan.due > 0 && plan.fresh > 0 && ' · '}
               {plan.fresh > 0 && (
                 <>
-                  <b>{plan.fresh}</b> new
+                  <b>{plan.fresh}</b> {s.home.fresh}
                 </>
               )}
+              {' · '}
+              {s.home.aboutMinutes(minutes)}
             </p>
           ) : (
             <p className="hint">
               {upcoming
-                ? `Next review ${describeGap(now, upcoming)}.`
-                : 'Pick a deck below and practise — what you get right starts the clock.'}
+                ? s.home.nextReview(describeGap(now, upcoming, s))
+                : s.home.nothingScheduled}
             </p>
           )}
         </div>
         {plan.cards.length > 0 && (
           <button type="button" className="btn primary big" onClick={onReview}>
-            Review {plan.cards.length}
+            {s.home.review(plan.cards.length)}
           </button>
         )}
       </section>
@@ -165,66 +200,58 @@ export function Home({
       <div className="home-grid">
         <button type="button" className="home-card" onClick={onKana}>
           <span className="big">あ ア</span>
-          <h2>Hiragana &amp; katakana</h2>
-          <p>
-            All {ALL_KANA.length} kana including dakuten and yōon. Type the sound, or pick the
-            glyph.
-          </p>
-          <Progress summary={kana} unit="kana" />
+          <h2>{s.deck.kana}</h2>
+          <p>{s.home.kanaBlurb(ALL_KANA.length)}</p>
+          <Progress summary={kana} unit={s.home.unit.kana} />
         </button>
 
         <button type="button" className="home-card" onClick={onKanji}>
           <span className="big">日 本 語</span>
-          <h2>Kanji — JLPT N5</h2>
-          <p>{ALL_KANJI.length} kanji in nine groups. Meanings, readings, recall and vocabulary.</p>
-          <Progress summary={kanji} unit="kanji" />
+          <h2>{s.deck.kanji}</h2>
+          <p>{s.home.kanjiBlurb(ALL_KANJI.length)}</p>
+          <Progress summary={kanji} unit={s.home.unit.kanji} />
         </button>
 
         <button type="button" className="home-card" onClick={onCounters}>
           <span className="big">六本 二十歳</span>
-          <h2>Counters, dates &amp; times</h2>
-          <p>
-            {ALL_COUNTERS.length} forms where the number changes shape — ろっぽん, ついたち, よじ.
-          </p>
-          <Progress summary={counters} unit="forms" />
+          <h2>{s.deck.counters}</h2>
+          <p>{s.home.countersBlurb(ALL_COUNTERS.length)}</p>
+          <Progress summary={counters} unit={s.home.unit.forms} />
         </button>
 
         <button type="button" className="home-card" onClick={onWords}>
           <span className="big">これ 手紙</span>
-          <h2>Vocabulary — N5</h2>
-          <p>
-            {ALL_WORDS.length} core words, including the kana-only ones no kanji deck can reach.
-          </p>
-          <Progress summary={words} unit="words" />
+          <h2>{s.deck.words}</h2>
+          <p>{s.home.wordsBlurb(ALL_WORDS.length)}</p>
+          <Progress summary={words} unit={s.home.unit.words} />
         </button>
 
         <button type="button" className="home-card" onClick={onConjugation}>
           <span className="big">書く 書いて</span>
-          <h2>Conjugation</h2>
-          <p>
-            ます, て-form, ない and past, across {ALL_VERBS.length} verbs and{' '}
-            {ALL_ADJECTIVES.length} adjectives.
-          </p>
-          <Progress summary={conjugation} unit="words" />
+          <h2>{s.deck.conjugation}</h2>
+          <p>{s.home.conjugationBlurb(ALL_VERBS.length, ALL_ADJECTIVES.length)}</p>
+          <Progress summary={conjugation} unit={s.home.unit.words} />
         </button>
 
         <button type="button" className="home-card" onClick={onParticles}>
           <span className="big">パン＿食べます</span>
-          <h2>Particles</h2>
-          <p>
-            {ALL_PARTICLE_SENTENCES.length} sentences with a gap — は, が, を, に, で and the rest.
-          </p>
-          <Progress summary={particles} unit="sentences" />
+          <h2>{s.deck.particles}</h2>
+          <p>{s.home.particlesBlurb(ALL_PARTICLE_SENTENCES.length)}</p>
+          <Progress summary={particles} unit={s.home.unit.sentences} />
+        </button>
+
+        <button type="button" className="home-card" onClick={onDuolingo}>
+          <span className="big">たべます 電車</span>
+          <h2>{s.deck.duolingo}</h2>
+          <p>{s.home.duolingoBlurb(ALL_DUOLINGO_WORDS.length, DUOLINGO_UNITS.length)}</p>
+          <Progress summary={duolingo} unit={s.home.unit.words} />
         </button>
 
         <button type="button" className="home-card" onClick={onReading}>
           <span className="big">私はパンを</span>
-          <h2>Reading</h2>
-          <p>
-            {ALL_READING_SENTENCES.length} sentences that use the other decks together, with
-            furigana when you want them.
-          </p>
-          <Progress summary={readingSummary} unit="sentences" />
+          <h2>{s.deck.reading}</h2>
+          <p>{s.home.readingBlurb(ALL_READING_SENTENCES.length)}</p>
+          <Progress summary={readingSummary} unit={s.home.unit.sentences} />
         </button>
       </div>
 
@@ -241,14 +268,14 @@ export function Home({
               link.download = `japanlearner-${new Date().toISOString().slice(0, 10)}.json`;
               link.click();
               URL.revokeObjectURL(url);
-              setNotice('Progress downloaded.');
+              setNotice(s.home.exported);
             }}
           >
-            Export progress
+            {s.home.exportProgress}
           </button>
 
           <button type="button" className="btn ghost" onClick={() => fileInput.current?.click()}>
-            Import progress
+            {s.home.importProgress}
           </button>
           <input
             ref={fileInput}
@@ -259,14 +286,8 @@ export function Home({
               const file = event.target.files?.[0];
               event.target.value = '';
               if (!file) return;
-              if (
-                !window.confirm(
-                  'Importing replaces all saved progress on this device. Continue?',
-                )
-              ) {
-                return;
-              }
-              const result = importProgress(await file.text());
+              if (!window.confirm(s.home.confirmImport)) return;
+              const result = importProgress(await file.text(), s);
               setNotice(result.message);
               if (result.ok) onReset();
             }}
@@ -277,14 +298,14 @@ export function Home({
               type="button"
               className="btn ghost"
               onClick={() => {
-                if (window.confirm('Clear all saved progress? This cannot be undone.')) {
+                if (window.confirm(s.home.confirmReset)) {
                   resetProgress();
-                  setNotice('Progress cleared.');
+                  setNotice(s.home.cleared);
                   onReset();
                 }
               }}
             >
-              Reset saved progress
+              {s.home.resetProgress}
             </button>
           )}
         </div>
@@ -300,25 +321,27 @@ export function Home({
  * a session that went fine. Both are shown, with a bar.
  */
 function StageProgress({ stage, stats }: { stage: Stage; stats: Record<string, ItemStats> }) {
+  const s = useStrings();
   const { known, learning, total } = stageProgress(stage, stats);
   return (
     <div style={{ maxWidth: 320, marginTop: 8 }}>
       <MasteryBar known={known} learning={learning} total={total} />
       <div className="faint" style={{ marginTop: 6 }}>
-        {known} of {total} known
-        {learning > 0 && ` · ${learning} still learning`}
+        {s.home.known(known, total)}
+        {learning > 0 && s.progress.learning(learning)}
       </div>
     </div>
   );
 }
 
 function Progress({ summary, unit }: { summary: Summary; unit: string }) {
+  const s = useStrings();
   if (!summary.seen) {
-    return <span className="faint">not practised yet</span>;
+    return <span className="faint">{s.home.notPractised}</span>;
   }
   return (
     <span className="faint">
-      {summary.seen} of {summary.total} {unit} practised · {summary.accuracy}% lifetime accuracy
+      {s.home.practised(summary.seen, summary.total, unit, summary.accuracy ?? 0)}
     </span>
   );
 }

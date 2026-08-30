@@ -12,12 +12,17 @@ import type {
 import { planReview, type Decks } from '../src/lib/review';
 import {
   BOX_INTERVALS,
+  DEFAULT_PACE,
   MAX_BOX,
+  NEW_PER_DAY,
   describeGap,
   isDue,
   isNew,
   nextDueAt,
   nextSchedule,
+  sessionNewCap,
+  weeklyAllowance,
+  type Pace,
 } from '../src/lib/schedule';
 import type { ItemStats } from '../src/lib/storage';
 import { eq, ok } from './assert';
@@ -70,6 +75,51 @@ eq('nothing scheduled at all', nextDueAt({}, NOW), null);
 eq('gap in hours', describeGap(NOW, NOW + 3 * 60 * 60 * 1000), 'in 3 hours');
 eq('gap of a day', describeGap(NOW, NOW + DAY), 'tomorrow');
 eq('gap in days', describeGap(NOW, NOW + 5 * DAY), 'in 5 days');
+
+// -------------------------------------------------------- one sitting
+
+// A fresh account has the whole week unspent. It still only gets a day of it:
+// opening the app for the first time on a hundred unfamiliar cards is the wall
+// the per-day limit exists to prevent.
+eq('a sitting takes a day at a time',
+  sessionNewCap(DEFAULT_PACE, weeklyAllowance(DEFAULT_PACE)), NEW_PER_DAY);
+eq('and a week away is met with the same day', sessionNewCap({ newPerDay: 15, daysPerWeek: 4 }, 60), 15);
+eq('a thin allowance is all there is to take', sessionNewCap(DEFAULT_PACE, 4), 4);
+eq('a spent budget introduces nothing', sessionNewCap(DEFAULT_PACE, 0), 0);
+eq('and it never goes negative', sessionNewCap(DEFAULT_PACE, -20), 0);
+
+/**
+ * A month of sittings, returning what the last settled week introduced.
+ *
+ * The allowance is read the way storage reads it — the six days behind you
+ * plus today, which has not been spent yet when the deck is built.
+ */
+function settledWeek(pace: Pace, studyDays: number): number {
+  const log: number[] = [];
+  let total = 0;
+  for (let day = 0; day < 28; day += 1) {
+    const spent = log.slice(Math.max(0, log.length - 6)).reduce((a, b) => a + b, 0);
+    const takes =
+      day % 7 < studyDays
+        ? sessionNewCap(pace, Math.max(0, weeklyAllowance(pace) - spent))
+        : 0;
+    log.push(takes);
+    if (day >= 21) total += takes;
+  }
+  return total;
+}
+
+// The two limits together, over a real week. Study the days you promised and
+// you get the pace you asked for; study fewer and you get fewer; study more and
+// the week's ceiling holds you to the course you actually chose rather than
+// quietly running the faster one.
+const fourDays: Pace = { newPerDay: 15, daysPerWeek: 4 };
+for (const studyDays of [1, 2, 3, 4, 5, 6, 7]) {
+  eq(`four days a week, studied ${studyDays}`,
+    settledWeek(fourDays, studyDays), Math.min(studyDays, 4) * 15);
+}
+eq('every day at seven days a week', settledWeek(DEFAULT_PACE, 7), weeklyAllowance(DEFAULT_PACE));
+eq('a once-a-week pace stays once a week', settledWeek({ newPerDay: 20, daysPerWeek: 1 }, 7), 20);
 
 // ------------------------------------------------------------ review plan
 

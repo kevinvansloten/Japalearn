@@ -37,21 +37,55 @@ const ROMAJI_TO_KANA: Record<string, string> = {
   pya: 'ぴゃ', pyu: 'ぴゅ', pyo: 'ぴょ',
   mya: 'みゃ', myu: 'みゅ', myo: 'みょ',
   rya: 'りゃ', ryu: 'りゅ', ryo: 'りょ',
+
+  // The syllables that only ever turn up in loanwords. The N5 decks barely
+  // need them, but the Duolingo course is a seventh katakana — カフェ, ファン
+  // タジー, コメディー, パーティー — and without these a reading converts only
+  // halfway and comes back as "kafuぇ".
+  fa: 'ふぁ', fi: 'ふぃ', fe: 'ふぇ', fo: 'ふぉ',
+  wi: 'うぃ', we: 'うぇ',
+  va: 'ゔぁ', vi: 'ゔぃ', vu: 'ゔ', ve: 'ゔぇ', vo: 'ゔぉ',
+  she: 'しぇ', je: 'じぇ', che: 'ちぇ',
+  tsa: 'つぁ', tse: 'つぇ', tso: 'つぉ',
+  // "ti" and "di" are already ち and ぢ and stay that way, so the IME spellings
+  // are what convert here. Someone typing the natural "paatii" is still
+  // accepted: checkReading compares in romaji as well as in kana.
+  thi: 'てぃ', dhi: 'でぃ', dhu: 'でゅ', thu: 'てゅ',
 };
 
 /** Longest key first, so greedy matching finds "tsu" before "tu". */
 const MAX_ROMAJI_LEN = 3;
 
-/** Built from the table above; first spelling wins as the canonical one. */
+/**
+ * The spelling each kana is written back as. Where several romaji produce the
+ * same kana the first listed here wins, so readings are shown the way a course
+ * would write them rather than the way an IME would take them.
+ */
 const KANA_TO_ROMAJI: Record<string, string> = (() => {
   const preferred: Record<string, string> = {};
   const order = ['shi', 'chi', 'tsu', 'fu', 'ji', 'zu', 'sha', 'shu', 'sho', 'ja', 'ju', 'jo', 'cha', 'chu', 'cho'];
   for (const romaji of order) preferred[ROMAJI_TO_KANA[romaji]] = romaji;
+  // てぃ and でぃ are written "ti" and "di" even though typing those gives ち
+  // and ぢ: this map is for showing an answer, not for taking one.
+  preferred['てぃ'] = 'ti';
+  preferred['でぃ'] = 'di';
+  preferred['でゅ'] = 'dyu';
+  preferred['てゅ'] = 'tyu';
   for (const [romaji, kana] of Object.entries(ROMAJI_TO_KANA)) {
     if (!(kana in preferred)) preferred[kana] = romaji;
   }
   return preferred;
 })();
+
+/**
+ * Small kana that reached the end of a word on their own, or followed
+ * something with no combined form. Nothing should be written back as raw kana
+ * inside a romaji answer, so these are the backstop.
+ */
+const SMALL_KANA: Record<string, string> = {
+  ぁ: 'a', ぃ: 'i', ぅ: 'u', ぇ: 'e', ぉ: 'o',
+  ゃ: 'ya', ゅ: 'yu', ょ: 'yo', ゎ: 'wa',
+};
 
 const DOUBLE_CONSONANT = /[bcdfghjkmpqrstvwyz]/;
 
@@ -146,7 +180,7 @@ export function kanaToRomaji(input: string): string {
       i += 1;
       continue;
     }
-    out += KANA_TO_ROMAJI[c] ?? c;
+    out += KANA_TO_ROMAJI[c] ?? SMALL_KANA[c] ?? c;
     i += 1;
   }
 

@@ -1,7 +1,5 @@
 import { READING_GROUPS, written } from '../data/reading';
 import {
-  READING_MODE_BLURB,
-  READING_MODE_LABEL,
   buildReadingCards,
   readingPool,
   type ReadingConfig,
@@ -18,6 +16,8 @@ import {
   type ModeOption,
 } from './DeckPicker';
 import { FlowPicker } from './ui';
+import { useStrings } from '../i18n';
+import { blurbOf, labelOf, sentenceOf } from '../i18n/content';
 
 const MODES: ReadingMode[] = ['meaning', 'listening'];
 
@@ -29,6 +29,7 @@ interface Props {
 }
 
 export function ReadingSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<ReadingConfig>) => onChange({ ...config, ...update });
   const hasVoice = useJapaneseVoice();
 
@@ -36,41 +37,41 @@ export function ReadingSetup({ config, onChange, onStart, onHome }: Props) {
     ? config
     : { ...config, modes: config.modes.filter((m) => m !== 'listening') };
 
-  const cards = buildReadingCards(usable);
+  const cards = buildReadingCards(usable, s);
 
   const groups = READING_GROUPS.map((group) => ({
     id: group.id,
-    label: group.label,
-    blurb: group.blurb,
+    label: labelOf(group, s.lang),
+    blurb: blurbOf(group, s.lang),
     items: group.sentences.map((sentence) => ({
       key: written(sentence),
       label: written(sentence),
-      title: sentence.english,
+      title: sentenceOf(sentence, s.lang),
     })),
   }));
 
   const modes: ModeOption<ReadingMode>[] = MODES.map((mode) => ({
     id: mode,
-    label: READING_MODE_LABEL[mode],
-    blurb: READING_MODE_BLURB[mode],
+    label: s.readingMode.label[mode],
+    blurb: s.readingMode.blurb[mode],
     // Translating a sentence by typing cannot be graded fairly.
     fixedInput: true,
     ...(mode === 'listening' && !hasVoice
-      ? { unavailable: 'Needs a Japanese voice installed on this device.' }
+      ? { unavailable: s.setup.needsVoice }
       : {}),
   }));
 
   return (
     <div className="stack">
       <SetupHeader
-        title="Reading"
-        subtitle={`${readingPool(usable).length} sentences · ${cards.length} cards`}
+        title={s.deck.reading}
+        subtitle={s.setup.readingSelected(readingPool(usable).length, cards.length)}
         onHome={onHome}
       />
 
       <DeckPicker
-        title="Which sentences?"
-        hint="Grouped by the pattern they use, so a set hangs together."
+        title={s.setup.whichSentences}
+        hint={s.setup.whichSentencesHint}
         groups={groups}
         groupIds={config.groupIds}
         excluded={config.excluded}
@@ -89,7 +90,7 @@ export function ReadingSetup({ config, onChange, onStart, onHome }: Props) {
           if (next.length) patch({ modes: next });
         }}
         onInputMode={() => {}}
-        footnote="Furigana are hidden until you ask for them, so you read the kanji first."
+        footnote={s.setup.furiganaNote}
       />
 
       <FlowPicker
@@ -99,7 +100,7 @@ export function ReadingSetup({ config, onChange, onStart, onHome }: Props) {
         onOrder={(order) => patch({ order })}
       />
 
-      <StartBar count={cards.length} empty="Pick at least one group" onStart={() => onStart(cards)} />
+      <StartBar count={cards.length} empty={s.setup.pickAGroup} onStart={() => onStart(cards)} />
     </div>
   );
 }

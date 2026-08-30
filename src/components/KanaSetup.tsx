@@ -1,6 +1,5 @@
-import { KANA_GROUPS, SECTION_LABELS, groupsBySection, type KanaSection } from '../data/kana';
+import { KANA_GROUPS, groupsBySection, type KanaSection } from '../data/kana';
 import {
-  SCRIPT_LABEL,
   buildKanaCards,
   kanaPool,
   type KanaConfig,
@@ -8,22 +7,12 @@ import {
   type KanaScript,
 } from '../lib/buildCards';
 import type { Card } from '../lib/session';
+import { useStrings } from '../i18n';
 import { Chip, FlowPicker, ModeCard, Panel, SelectAll } from './ui';
 
 const SECTIONS: KanaSection[] = ['gojuon', 'dakuten', 'yoon'];
 
-const MODES: { value: KanaMode; label: string; blurb: string }[] = [
-  {
-    value: 'recognition',
-    label: 'Recognition — kana → sound',
-    blurb: 'See か, type “ka”. This is the one to start with.',
-  },
-  {
-    value: 'recall',
-    label: 'Recall — sound → kana',
-    blurb: 'See “ka”, pick か out of four. Harder, and it sticks better.',
-  },
-];
+const MODES: KanaMode[] = ['recognition', 'recall'];
 
 function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -37,10 +26,11 @@ interface Props {
 }
 
 export function KanaSetup({ config, onChange, onStart, onHome }: Props) {
+  const s = useStrings();
   const patch = (update: Partial<KanaConfig>) => onChange({ ...config, ...update });
 
   const selectedKana = kanaPool(config).length;
-  const cards = buildKanaCards(config);
+  const cards = buildKanaCards(config, s);
   const ready = cards.length > 0;
 
   const setSectionGroups = (section: KanaSection, on: boolean) => {
@@ -56,17 +46,15 @@ export function KanaSetup({ config, onChange, onStart, onHome }: Props) {
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Hiragana &amp; katakana</strong>
-          <div className="faint">
-            {selectedKana} kana selected · {cards.length} cards
-          </div>
+          <strong>{s.deck.kana}</strong>
+          <div className="faint">{s.setup.kanaSelected(selectedKana, cards.length)}</div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
-      <Panel title="Which script?" hint="Pick one or both. Choosing both practises them together.">
+      <Panel title={s.setup.whichScript} hint={s.setup.whichScriptHint}>
         <div className="chip-grid">
           {(['hira', 'kata'] as KanaScript[]).map((script) => (
             <Chip
@@ -77,20 +65,20 @@ export function KanaSetup({ config, onChange, onStart, onHome }: Props) {
                 if (next.length) patch({ scripts: next });
               }}
             >
-              {SCRIPT_LABEL[script]}
+              {s.script[script]}
             </Chip>
           ))}
         </div>
       </Panel>
 
-      <Panel title="Which kana?" hint="Rows of the syllabary — turn on only what you are working on.">
+      <Panel title={s.setup.whichKana} hint={s.setup.whichKanaHint}>
         {SECTIONS.map((section) => {
           const groups = groupsBySection(section);
           const allOn = groups.every((g) => config.groupIds.includes(g.id));
           return (
             <div className="group-block" key={section}>
               <div className="group-head">
-                <h3>{SECTION_LABELS[section]}</h3>
+                <h3>{s.kanaSection[section]}</h3>
                 <SelectAll
                   all={() => setSectionGroups(section, true)}
                   none={() => setSectionGroups(section, false)}
@@ -108,7 +96,11 @@ export function KanaSetup({ config, onChange, onStart, onHome }: Props) {
                   </Chip>
                 ))}
               </div>
-              {allOn && <div className="faint" style={{ marginTop: 6 }}>whole section on</div>}
+              {allOn && (
+                <div className="faint" style={{ marginTop: 6 }}>
+                  {s.setup.wholeSectionOn}
+                </div>
+              )}
             </div>
           );
         })}
@@ -118,26 +110,26 @@ export function KanaSetup({ config, onChange, onStart, onHome }: Props) {
             className="btn ghost"
             onClick={() => patch({ groupIds: KANA_GROUPS.map((g) => g.id) })}
           >
-            Everything
+            {s.common.everything}
           </button>
           <button type="button" className="btn ghost" onClick={() => patch({ groupIds: [] })}>
-            Nothing
+            {s.common.nothing}
           </button>
         </div>
       </Panel>
 
-      <Panel title="How should you be asked?">
+      <Panel title={s.setup.howAsked}>
         <div className="mode-list">
           {MODES.map((mode) => (
             <ModeCard
-              key={mode.value}
-              pressed={config.modes.includes(mode.value)}
+              key={mode}
+              pressed={config.modes.includes(mode)}
               onClick={() => {
-                const next = toggle(config.modes, mode.value);
+                const next = toggle(config.modes, mode);
                 if (next.length) patch({ modes: next });
               }}
-              title={mode.label}
-              blurb={mode.blurb}
+              title={s.kanaMode.label[mode]}
+              blurb={s.kanaMode.blurb[mode]}
             />
           ))}
         </div>
@@ -157,7 +149,7 @@ export function KanaSetup({ config, onChange, onStart, onHome }: Props) {
           disabled={!ready}
           onClick={() => onStart(cards)}
         >
-          {ready ? `Start — ${cards.length} cards` : 'Pick at least one row'}
+          {ready ? s.setup.start(cards.length) : s.setup.pickARow}
         </button>
       </div>
     </div>

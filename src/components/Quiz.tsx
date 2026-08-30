@@ -9,9 +9,10 @@ import {
   type SessionOptions,
   type SessionState,
 } from '../lib/session';
-import { recordReview, recordSession } from '../lib/storage';
+import { recordReview, recordSession, recordTempo } from '../lib/storage';
 import { romajiToKana } from '../lib/romaji';
 import { speak, stopSpeaking, useJapaneseVoice } from '../lib/speech';
+import { useStrings } from '../i18n';
 import { Results } from './Results';
 import { SpeakerIcon } from './ui';
 
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props) {
+  const s = useStrings();
   const [state, setState] = useState<SessionState>(() => createSession(cards, options));
   const [draft, setDraft] = useState('');
   const [autoAdvance, setAutoAdvance] = useState(true);
@@ -99,6 +101,9 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
     }
     if (reschedules) recordReview(byItem);
     else recordSession(byItem);
+    // How long the cards actually took, so the plan screen can talk in minutes
+    // without inventing the rate it converts them at.
+    recordTempo(state.answered, Date.now() - state.startedAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.phase]);
 
@@ -164,17 +169,17 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
         <div>
           <strong>{title}</strong>
           <div className="faint">
-            {left === null ? 'Endless — stop whenever you like' : `${left} card${left === 1 ? '' : 's'} to go`}
+            {left === null ? s.quiz.endless : s.quiz.toGo(left)}
           </div>
         </div>
         <div className="row">
           {onEdit && (
             <button type="button" className="btn ghost" onClick={onEdit}>
-              Settings
+              {s.common.settings}
             </button>
           )}
           <button type="button" className="btn" onClick={() => dispatch({ type: 'finish' })}>
-            Finish
+            {s.quiz.finish}
           </button>
         </div>
       </div>
@@ -187,13 +192,13 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
 
       <div className="scoreline">
         <span>
-          <b>{state.correct}</b> / {state.answered} correct
+          <b>{state.correct}</b> / {state.answered} {s.quiz.correctLabel}
         </span>
         <span>
-          <b>{accuracy(state)}%</b> accuracy
+          <b>{accuracy(state)}%</b> {s.quiz.accuracyLabel}
         </span>
         <span>
-          streak <b>{state.streak}</b>
+          {s.quiz.streakLabel} <b>{state.streak}</b>
         </span>
       </div>
 
@@ -204,7 +209,7 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
             type="button"
             className="listen"
             onClick={() => card.speech && speak(card.speech)}
-            aria-label="Play it again"
+            aria-label={s.quiz.playAgain}
           >
             <SpeakerIcon size={40} />
           </button>
@@ -270,14 +275,14 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
             {state.phase === 'question' && (
               <div className="row" style={{ justifyContent: 'center', marginTop: 14 }}>
                 <button type="submit" className="btn primary" disabled={!draft.trim()}>
-                  Check
+                  {s.quiz.check}
                 </button>
                 <button
                   type="button"
                   className="btn ghost"
                   onClick={() => dispatch({ type: 'reveal' })}
                 >
-                  I don’t know
+                  {s.quiz.dontKnow}
                 </button>
               </div>
             )}
@@ -314,7 +319,11 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
       {feedback && (
         <div ref={feedbackRef} className={feedback.correct ? 'feedback correct' : 'feedback wrong'}>
           <div className="verdict">
-            {feedback.correct ? 'Correct' : feedback.given ? `Not quite — you wrote “${feedback.given}”` : 'Answer'}
+            {feedback.correct
+              ? s.quiz.verdictCorrect
+              : feedback.given
+                ? s.quiz.verdictWrong(feedback.given)
+                : s.quiz.verdictRevealed}
           </div>
           <div className="row" style={{ gap: 8 }}>
             <span className={card.answerScript === 'jp' ? 'answer jp-text' : 'answer'}>
@@ -325,8 +334,8 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
                 type="button"
                 className="speak-btn"
                 onClick={() => speak(card.speech!)}
-                aria-label={`Hear ${card.speech}`}
-                title="Hear it"
+                aria-label={s.quiz.hear(card.speech!)}
+                title={s.quiz.hearIt}
               >
                 <SpeakerIcon size={16} />
               </button>
@@ -346,10 +355,10 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
                 dispatch({ type: 'next' });
               }}
             >
-              Next
+              {s.quiz.next}
             </button>
             <span className="faint">
-              or press <span className="kbd">Enter</span>
+              {s.quiz.orPress} <span className="kbd">{s.quiz.enterKey}</span>
             </span>
           </div>
         </div>
@@ -362,9 +371,9 @@ export function Quiz({ title, cards, options, onEdit, onHome, scheduled }: Props
             checked={autoAdvance}
             onChange={(e) => setAutoAdvance(e.target.checked)}
           />
-          Move on automatically when correct
+          {s.quiz.autoAdvance}
         </label>
-        {card.inputMode === 'choice' && <span className="faint">Tip: keys 1–4 pick an answer</span>}
+        {card.inputMode === 'choice' && <span className="faint">{s.quiz.choiceTip}</span>}
       </div>
     </div>
   );

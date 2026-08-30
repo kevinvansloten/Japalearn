@@ -255,6 +255,36 @@ input {
   margin-bottom: 10px;
 }
 
+/*
+ * The Duolingo deck picks a range out of three hundred and ten units, so its
+ * unit list scrolls in place rather than pushing the rest of the screen down
+ * past the fold. Only the opened unit renders its words, so the box stays
+ * short whatever the range is.
+ */
+.unit-list {
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: 14px;
+  padding-right: 6px;
+}
+
+.unit-input {
+  width: 72px;
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .group-head h3 {
   margin: 0;
   font-size: 13px;
@@ -508,6 +538,155 @@ input {
 
 .listen:active {
   transform: scale(0.98);
+}
+
+/* ------------------------------------------------- reading the material */
+
+.browse-search {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: inherit;
+}
+
+.browse-search:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.browse-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+/*
+ * Four columns: the Japanese, what it means, the speaker, the mastery dot. The
+ * first is fixed rather than fluid so that a column of kanji lines up down the
+ * page — a reference you scan is worth more than one that reflows.
+ */
+.browse-row {
+  display: grid;
+  grid-template-columns: minmax(0, 15em) 1fr 28px 10px;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+}
+
+.browse-row:first-child {
+  border-top: 0;
+}
+
+.browse-jp .jp {
+  font-family: var(--jp);
+  font-size: 17px;
+}
+
+.browse-jp .reading {
+  display: block;
+  font-family: var(--jp);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.browse-gloss .note {
+  display: block;
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  font-family: var(--jp);
+}
+
+.browse-dot {
+  display: inline-grid;
+  place-items: center;
+}
+
+.browse-row .speak-btn {
+  width: 26px;
+  height: 26px;
+  align-self: center;
+}
+
+/* The syllabary, one consonant row at a time. */
+.kana-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+}
+
+.kana-row-label {
+  width: 5.5em;
+  flex: none;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--jp);
+}
+
+.kana-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kana-cell {
+  position: relative;
+  width: 74px;
+  padding: 7px 4px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+}
+
+.kana-cell:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.kana-cell:disabled {
+  cursor: default;
+}
+
+.kana-cell .pair {
+  display: block;
+  font-family: var(--jp);
+  font-size: 17px;
+}
+
+.kana-cell .romaji {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.kana-cell .dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+@media (max-width: 640px) {
+  .browse-row {
+    grid-template-columns: minmax(0, 8em) 1fr 26px 10px;
+    gap: 8px;
+  }
+
+  .kana-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 .speak-btn {
@@ -895,6 +1074,65 @@ input {
   background: var(--bg-sunken);
 }
 
+/* --------------------------------------------------------------- plan */
+
+/* The headline is a sentence, not a row of controls, so it stacks. */
+.plan-headline {
+  display: block;
+}
+
+.plan-headline h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.plan-headline .faint {
+  margin: 10px 0 0;
+  max-width: 62ch;
+}
+
+.pace-row {
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pace-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.pace-row > label,
+.pace-row > span:first-child {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.pace-row input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.pace-value {
+  min-width: 3ch;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dates in a column line up only if the digits are the same width. */
+.stage-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /*
  * On a phone the whole point is that the card and its feedback fit together,
  * so everything in the quiz tightens up rather than just reflowing.
@@ -986,5 +1224,20 @@ input {
 
   .forecast {
     gap: 5px;
+  }
+
+  /* A 150px label column leaves nothing for the slider on a phone. */
+  .pace-row {
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+  }
+
+  .pace-row > label,
+  .pace-row > span:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .plan-headline h2 {
+    font-size: 19px;
   }
 }

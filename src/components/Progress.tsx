@@ -5,29 +5,43 @@ import { ALL_COUNTERS } from '../data/counters';
 import { ALL_KANA } from '../data/kana';
 import { ALL_KANJI } from '../data/kanji';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
+import { ALL_READING_SENTENCES, written } from '../data/reading';
 import { ALL_WORDS } from '../data/words';
-import { currentStage, isStageComplete, stageNumber, stageProgress } from '../lib/curriculum';
+import { currentStage, stageNumber } from '../lib/curriculum';
+// Aliased: `forecast` is already the name of the week-ahead bucket list below.
+import { DEFAULT_ACCURACY, forecast as projectPlan } from '../lib/forecast';
 import { reviewForecast, summarise, weakest } from '../lib/progress';
-import { loadItemStats } from '../lib/storage';
-import { MasteryBar, Panel } from './ui';
+import { loadItemStats, loadPace, secondsPerCard } from '../lib/storage';
+import { useStrings } from '../i18n';
+import { meaningsOf, sentenceOf, titleOf } from '../i18n/content';
+import type { Lang } from '../i18n/lang';
+import type { Strings } from '../i18n/en';
+import { MasteryBar, Panel, stageDateFormat } from './ui';
 
-const DECKS: { label: string; itemIds: string[] }[] = [
+const decksOf = (s: Strings): { label: string; itemIds: string[] }[] => [
   {
-    label: 'Hiragana & katakana',
+    label: s.deck.kana,
     itemIds: ALL_KANA.flatMap((k) => [`kana:hira:${k.id}`, `kana:kata:${k.id}`]),
   },
-  { label: 'Kanji', itemIds: ALL_KANJI.map((k) => `kanji:${k.char}`) },
-  { label: 'Counters, dates & times', itemIds: ALL_COUNTERS.map((c) => `counter:${c.form}`) },
-  { label: 'Vocabulary', itemIds: ALL_WORDS.map((w) => `vocab:${w.word}`) },
+  { label: s.deck.kanjiShort, itemIds: ALL_KANJI.map((k) => `kanji:${k.char}`) },
+  { label: s.deck.counters, itemIds: ALL_COUNTERS.map((c) => `counter:${c.form}`) },
+  { label: s.deck.wordsShort, itemIds: ALL_WORDS.map((w) => `vocab:${w.word}`) },
   {
-    label: 'Conjugation',
+    label: s.deck.conjugation,
     itemIds: [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   },
-  { label: 'Particles', itemIds: ALL_PARTICLE_SENTENCES.map((s) => `particle:${s.text}`) },
+  {
+    label: s.deck.particles,
+    itemIds: ALL_PARTICLE_SENTENCES.map((sentence) => `particle:${sentence.text}`),
+  },
+  {
+    label: s.deck.reading,
+    itemIds: ALL_READING_SENTENCES.map((sentence) => `reading:${written(sentence)}`),
+  },
 ];
 
 /** The label an item id refers to, for the weak-items list. */
-function describe(itemId: string): { glyph: string; note: string } | null {
+function describe(itemId: string, s: Strings, lang: Lang): { glyph: string; note: string } | null {
   const [kind, ...rest] = itemId.split(':');
   const key = rest.join(':');
   switch (kind) {
@@ -39,7 +53,7 @@ function describe(itemId: string): { glyph: string; note: string } | null {
     }
     case 'kanji': {
       const kanji = ALL_KANJI.find((k) => k.char === key);
-      return kanji ? { glyph: kanji.char, note: kanji.meanings[0] } : null;
+      return kanji ? { glyph: kanji.char, note: meaningsOf(kanji, lang)[0] } : null;
     }
     case 'counter': {
       const counter = ALL_COUNTERS.find((c) => c.form === key);
@@ -47,25 +61,34 @@ function describe(itemId: string): { glyph: string; note: string } | null {
     }
     case 'vocab': {
       const word = ALL_WORDS.find((w) => w.word === key);
-      return word ? { glyph: word.word, note: word.meanings[0] } : { glyph: key, note: '' };
+      return word
+        ? { glyph: word.word, note: meaningsOf(word, lang)[0] }
+        : { glyph: key, note: '' };
     }
     case 'conj':
-      return { glyph: key, note: 'conjugation' };
+      return { glyph: key, note: s.progress.conjugationNote };
     case 'particle':
       return { glyph: key, note: '' };
+    case 'reading': {
+      const sentence = ALL_READING_SENTENCES.find((r) => written(r) === key);
+      return sentence ? { glyph: key, note: sentenceOf(sentence, lang) } : { glyph: key, note: '' };
+    }
     default:
       return null;
   }
 }
+
 
 interface Props {
   onHome: () => void;
 }
 
 export function Progress({ onHome }: Props) {
+  const s = useStrings();
   const stats = useMemo(() => loadItemStats(), []);
+  const decks = decksOf(s);
 
-  const everything = DECKS.flatMap((d) => d.itemIds);
+  const everything = decks.flatMap((d) => d.itemIds);
   const overall = summarise(everything, stats);
   const forecast = reviewForecast(stats);
   const struggling = weakest(everything, stats);
@@ -73,35 +96,43 @@ export function Progress({ onHome }: Props) {
   // counting completed stages: a later stage can finish before an earlier one.
   const stage = currentStage(stats);
   const busiest = Math.max(1, ...forecast);
+  // Dated against the saved pace, so the checklist below agrees with the plan
+  // screen rather than offering a second opinion.
+  const projection = projectPlan(
+    stats,
+    loadPace(),
+    overall.accuracy === null ? DEFAULT_ACCURACY : overall.accuracy / 100,
+    secondsPerCard().seconds,
+  );
+  const stageDate = stageDateFormat(projection.finishesOn, s.lang);
 
   return (
     <div className="stack">
       <div className="row between">
         <div>
-          <strong>Progress</strong>
+          <strong>{s.progress.title}</strong>
           <div className="faint">
-            {overall.known} of {overall.total} items known ·{' '}
-            {stage ? `step ${stageNumber(stage)} of ${CURRICULUM.length}` : 'plan finished'}
+            {s.progress.itemsKnown(overall.known, overall.total)} ·{' '}
+            {stage
+              ? s.progress.step(stageNumber(stage), CURRICULUM.length)
+              : s.progress.planFinished}
           </div>
         </div>
         <button type="button" className="btn ghost" onClick={onHome}>
-          Home
+          {s.common.home}
         </button>
       </div>
 
-      <Panel
-        title="Where you are"
-        hint="An item counts as known once it has survived a week — box 3 or higher."
-      >
-        {DECKS.map((deck) => {
+      <Panel title={s.progress.whereYouAre} hint={s.progress.whereYouAreHint}>
+        {decks.map((deck) => {
           const summary = summarise(deck.itemIds, stats);
           return (
             <div className="deck-row" key={deck.label}>
               <div className="row between" style={{ marginBottom: 6 }}>
                 <strong style={{ fontSize: 14 }}>{deck.label}</strong>
                 <span className="faint">
-                  {summary.known}/{summary.total} known
-                  {summary.learning > 0 && ` · ${summary.learning} learning`}
+                  {s.progress.knownOf(summary.known, summary.total)}
+                  {summary.learning > 0 && s.progress.learning(summary.learning)}
                   {summary.accuracy !== null && ` · ${summary.accuracy}%`}
                 </span>
               </div>
@@ -115,9 +146,9 @@ export function Progress({ onHome }: Props) {
         })}
       </Panel>
 
-      <Panel title="The week ahead" hint="How many items fall due each day if you keep up.">
+      <Panel title={s.progress.weekAhead} hint={s.progress.weekAheadHint}>
         {forecast.every((n) => n === 0) ? (
-          <p className="hint">Nothing scheduled yet. Answer something and the clock starts.</p>
+          <p className="hint">{s.progress.nothingScheduled}</p>
         ) : (
           <div className="forecast">
             {forecast.map((count, index) => (
@@ -126,40 +157,39 @@ export function Progress({ onHome }: Props) {
                   {count > 0 && <span style={{ height: `${(count / busiest) * 100}%` }} />}
                 </div>
                 <div className="faint">{count}</div>
-                <div className="faint">{index === 0 ? 'today' : `+${index}`}</div>
+                <div className="faint">
+                  {index === 0 ? s.progress.today : s.progress.inDays(index)}
+                </div>
               </div>
             ))}
           </div>
         )}
       </Panel>
 
-      <Panel title="The plan" hint="Stages you have finished, and the one you are on.">
+      <Panel title={s.progress.thePlan} hint={s.progress.thePlanHint}>
         <ol className="stage-list">
-          {CURRICULUM.map((stage) => {
-            const summary = stageProgress(stage, stats);
-            const complete = isStageComplete(stage, stats);
-            return (
-              <li key={stage.id} className="stage-row" data-complete={complete}>
-                <span className="tick" aria-hidden="true">
-                  {complete ? '✓' : ''}
+          {projection.stages.map((entry) => (
+            <li key={entry.stage.id} className="stage-row" data-complete={entry.complete}>
+              <span className="tick" aria-hidden="true">
+                {entry.complete ? '✓' : ''}
+              </span>
+              <span className="body">
+                <span className="title">{titleOf(entry.stage, s.lang)}</span>
+                <span className="faint">
+                  {s.progress.knownOf(entry.known, entry.total)}
+                  {entry.finishesOn !== null && ` · ${stageDate(entry.finishesOn)}`}
                 </span>
-                <span className="body">
-                  <span className="title">{stage.title}</span>
-                  <span className="faint">
-                    {summary.known}/{summary.total} known
-                  </span>
-                </span>
-              </li>
-            );
-          })}
+              </span>
+            </li>
+          ))}
         </ol>
       </Panel>
 
       {struggling.length > 0 && (
-        <Panel title="Giving you the most trouble" hint="Lowest accuracy across all your sessions.">
+        <Panel title={s.progress.trouble} hint={s.progress.troubleHint}>
           <div className="missed-list">
             {struggling.map(({ id, accuracy }) => {
-              const described = describe(id);
+              const described = describe(id, s, s.lang);
               if (!described) return null;
               return (
                 <div className="missed-item" key={id}>
