@@ -206,6 +206,10 @@ const aidedCards = buildDuolingoCards(aidedConfig);
 const unaidedCards = new Map(buildDuolingoCards({ ...aidedConfig, showRomaji: false })
   .map((card) => [card.id, card]));
 const aided = new Map(aidedCards.map((card) => [card.id, card]));
+eq('practice displays hello with wa', aided.get('duo-meaning-こんにちは')?.promptNote, 'konnichiwa');
+eq('practice displays good evening with wa', aided.get('duo-meaning-こんばんは')?.promptNote, 'konbanwa');
+eq('romaji answers use the spoken greeting', romajiCards.get('duo-recall-こんにちは')?.answer, 'konnichiwa');
+ok('spoken greeting is accepted when typed', romajiCards.get('duo-recall-こんにちは')!.check('konnichiwa'));
 eq('romaji aids preserve the card count', aidedCards.length, unaidedCards.size);
 for (const card of aidedCards) {
   const plain = unaidedCards.get(card.id)!;

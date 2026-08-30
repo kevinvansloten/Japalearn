@@ -23,6 +23,33 @@ eq('reverse gakkou', kanaToRomaji('がっこう'), 'gakkou');
 eq('reverse kyou', kanaToRomaji('きょう'), 'kyou');
 eq('reverse long mark', kanaToRomaji('コーヒー'), 'koohii');
 
+// Pronunciation depends on the word, not just the kana character. These
+// include a greeting, a phrase starting with は and one ending with it.
+eq('hello uses the spoken wa', kanaToRomaji('こんにちは'), 'konnichiwa');
+eq('good evening uses the spoken wa', kanaToRomaji('こんばんは'), 'konbanwa');
+eq('name question ends in wa', kanaToRomaji('おなまえは'), 'onamaewa');
+eq('phrase beginning with the topic particle', kanaToRomaji('はありますか'), 'waarimasuka');
+eq('well then ends in wa', kanaToRomaji('それでは'), 'soredewa');
+eq('actually ends in wa', kanaToRomaji('じつは'), 'jitsuwa');
+eq('conjunction also uses wa', kanaToRomaji('または'), 'matawa');
+eq('punctuation is preserved', kanaToRomaji('こんにちは！'), 'konnichiwa！');
+eq('katakana greeting uses wa', kanaToRomaji('コンニチハ'), 'konnichiwa');
+eq('normal ha at the start of a word', kanaToRomaji('はな'), 'hana');
+eq('normal ha in the middle of a word', kanaToRomaji('ごはん'), 'gohan');
+eq('normal ha at the end of a word', kanaToRomaji('はは'), 'haha');
+eq('yes is not a topic particle', kanaToRomaji('はい'), 'hai');
+eq('a similar verb keeps ha', kanaToRomaji('はいりますか'), 'hairimasuka');
+eq('good morning keeps ha', kanaToRomaji('おはようございます'), 'ohayougozaimasu');
+eq('do not change a phrase inside a longer word', kanaToRomaji('こんにちはいしゃ'), 'konnichihaisha');
+eq('a standalone kana stays ha', kanaToRomaji('は'), 'ha');
+
+eq('accept hello as pronounced', checkReading('konnichiwa', ['こんにちは']), true);
+eq('accept good evening as pronounced', checkReading('konbanwa', ['こんばんは']), true);
+eq('keep accepting IME spellings', checkReading('konnichiha', ['こんにちは']), true);
+eq('keep accepting the written kana', checkReading('こんにちは', ['こんにちは']), true);
+eq('a wrong pronunciation is still wrong', checkReading('wana', ['はな']), false);
+eq('a bare reading does not become the particle', checkReading('wa', ['は']), false);
+
 // Reading checks.
 eq('reading: romaji', checkReading('nihon', ['にほん']), true);
 eq('reading: on in katakana', checkReading('nichi', ['ニチ', 'ジツ']), true);
