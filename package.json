@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "esbuild tests/index.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/japanlearner-tests.mjs --log-level=error && node node_modules/.cache/japanlearner-tests.mjs",
-    "check:data": "esbuild scripts/check-against-jmdict.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/check-data.mjs --log-level=error && node node_modules/.cache/check-data.mjs"
+    "check:data": "esbuild scripts/check-against-jmdict.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/check-data.mjs --log-level=error && node node_modules/.cache/check-data.mjs",
+    "import:duolingo": "esbuild scripts/import-duome.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/import-duome.mjs --log-level=error && node node_modules/.cache/import-duome.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

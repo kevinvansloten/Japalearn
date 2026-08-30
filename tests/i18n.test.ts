@@ -21,6 +21,7 @@ import {
   NL_KEYS as CONJUGATION_NL,
 } from '../src/data/conjugation';
 import { ALL_PARTICLE_SENTENCES, PARTICLE_GROUPS, NL_KEYS as PARTICLE_NL } from '../src/data/particles';
+import { DUOLINGO_UNITS } from '../src/data/duolingo';
 import { CURRICULUM } from '../src/data/curriculum';
 import {
   buildConjugationCards,
@@ -90,6 +91,9 @@ const groups = [
   ['words', WORD_GROUPS],
   ['conjugation', CONJUGATION_GROUPS],
   ['particles', PARTICLE_GROUPS],
+  // Duolingo does not translate its unit names, so those come back the same in
+  // both languages; the goal under each one is genuinely translated.
+  ['duolingo units', DUOLINGO_UNITS],
 ] as const;
 
 for (const [name, list] of groups) {

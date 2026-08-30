@@ -1,6 +1,14 @@
 import { KANA_LOOKALIKES, KANJI_LOOKALIKES } from '../data/confusables';
 import { ALL_COUNTERS, type CounterItem } from '../data/counters';
 import { ALL_WORDS, hasKanji, type WordEntry } from '../data/words';
+import {
+  DUOLINGO_UNITS,
+  duolingoItemId,
+  hasKanji as duolingoHasKanji,
+  hasReading,
+  type DuolingoEntry,
+  type DuolingoUnit,
+} from '../data/duolingo';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import {
   ALL_PARTICLE_SENTENCES,
@@ -21,7 +29,7 @@ import { ALL_KANJI, type KanjiEntry } from '../data/kanji';
 import { checkMeaning, checkReading, kanaToRomaji } from './romaji';
 import { shuffle, type Card, type Flow, type InputMode, type Order } from './session';
 import { en, type Strings } from '../i18n/en';
-import { meaningLang, meaningOf, meaningsOf, sentenceOf, whyOf } from '../i18n/content';
+import { labelOf, meaningLang, meaningOf, meaningsOf, sentenceOf, whyOf } from '../i18n/content';
 
 const CHOICE_COUNT = 4;
 
@@ -722,4 +730,284 @@ export function buildParticleCards(config: ParticleConfig, s: Strings = en): Car
       check: (given: string) => accepted.includes(given.trim()),
     };
   });
+}
+
+// -------------------------------------------------------------- duolingo
+
+/**
+ * Which of the four questions to ask. The same four the N5 vocabulary deck
+ * asks, because they are the four a word deck has: both directions of the
+ * translation, the reading, and the sound.
+ */
+export type DuolingoMode = 'meaning' | 'recall' | 'reading' | 'listening';
+
+/**
+ * How the Japanese side is written — and therefore how it has to be answered.
+ *
+ * The course writes 見ます with the kanji, which makes "meaning → word" a
+ * question you cannot answer without a Japanese IME. Switching the script to
+ * kana or romaji rewrites the prompt and the accepted answer together, so the
+ * same deck is drillable on a laptop with nothing installed. It also decides
+ * how much is really being asked: みます is a different exercise from 見ます,
+ * and mimasu is easier again.
+ */
+export type DuolingoScript = 'word' | 'kana' | 'romaji';
+
+export interface DuolingoConfig {
+  /** the course's units are a range, not a set: you are somewhere along them */
+  fromUnit: number;
+  toUnit: number;
+  /** words explicitly switched off inside a unit that is otherwise in range */
+  excluded: string[];
+  modes: DuolingoMode[];
+  inputModes: Record<DuolingoMode, InputMode>;
+  script: DuolingoScript;
+  flow: Flow;
+  order: Order;
+}
+
+const inRange = (config: DuolingoConfig, unit: number): boolean =>
+  unit >= Math.min(config.fromUnit, config.toUnit) &&
+  unit <= Math.max(config.fromUnit, config.toUnit);
+
+export function duolingoUnits(config: DuolingoConfig): DuolingoUnit[] {
+  return DUOLINGO_UNITS.filter((unit) => inRange(config, unit.number));
+}
+
+export function duolingoPool(config: DuolingoConfig): DuolingoEntry[] {
+  return duolingoUnits(config).flatMap((unit) =>
+    unit.words.filter((word) => !config.excluded.includes(word.word)),
+  );
+}
+
+/**
+ * The Japanese side, written as the config asks for it. Null when it cannot be
+ * written that way at all: a phrase no dictionary will give a reading for has
+ * no kana or romaji form to show, so those cards go unbuilt rather than wrong.
+ */
+function japanese(entry: DuolingoEntry, script: DuolingoScript): string | null {
+  if (script === 'word') return entry.word;
+  if (!hasReading(entry)) return null;
+  return script === 'kana' ? entry.reading : kanaToRomaji(entry.reading);
+}
+
+/** Whether this mode has a question to ask about this entry. */
+const asks = (mode: DuolingoMode, config: DuolingoConfig, entry: DuolingoEntry): boolean => {
+  if (mode === 'reading') {
+    // Asking for the reading only makes sense written as the course writes it,
+    // and only when that writing hides something: みず is already its reading.
+    return config.script === 'word' && hasReading(entry) && duolingoHasKanji(entry);
+  }
+  if (mode === 'listening' && !hasReading(entry)) return false;
+  return japanese(entry, config.script) !== null;
+};
+
+/**
+ * What Start would produce, without producing it. The deck runs to six
+ * thousand words and the setup screen recounts on every keystroke, so the
+ * count is worked out arithmetically rather than by building twenty thousand
+ * cards and taking their length.
+ */
+export function duolingoCardCount(config: DuolingoConfig): number {
+  let total = 0;
+  for (const entry of duolingoPool(config)) {
+    for (const mode of config.modes) if (asks(mode, config, entry)) total += 1;
+  }
+  return total;
+}
+
+export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Card[] {
+  const pool = duolingoPool(config);
+  const cards: Card[] = [];
+  const units = new Map(DUOLINGO_UNITS.map((unit) => [unit.id, unit]));
+
+  const canonical = (entry: DuolingoEntry): string => meaningsOf(entry, s.lang)[0];
+
+  /**
+   * Six thousand imported words share meanings freely — a dozen of them gloss
+   * as "to go" — where the hand-written N5 deck has a test forbidding it. So
+   * the clash is handled rather than legislated away: every word carrying the
+   * same gloss is accepted when the answer is typed, and none of them is ever
+   * offered as a distractor to another. Otherwise "go" would put two
+   * defensible options on screen with only one of them marked right.
+   */
+  const byMeaning = new Map<string, DuolingoEntry[]>();
+  const byReading = new Map<string, DuolingoEntry[]>();
+  /**
+   * And the same collision the other way up. 花 and 鼻 are separate words with
+   * separate glosses, but written in kana they are both はな, so a session in
+   * kana or romaji has to accept "nose" for the one that means flower. Written
+   * as the course writes it this map has one entry per key and changes nothing.
+   */
+  const byWritten = new Map<string, DuolingoEntry[]>();
+  for (const entry of pool) {
+    const meaning = canonical(entry).toLowerCase();
+    byMeaning.set(meaning, [...(byMeaning.get(meaning) ?? []), entry]);
+    if (hasReading(entry)) {
+      byReading.set(entry.reading, [...(byReading.get(entry.reading) ?? []), entry]);
+    }
+    const written = japanese(entry, config.script);
+    if (written !== null) byWritten.set(written, [...(byWritten.get(written) ?? []), entry]);
+  }
+
+  const meaningPool = pool.map(canonical);
+  const writtenPool = pool
+    .map((entry) => japanese(entry, config.script))
+    .filter((written): written is string => written !== null);
+  const readingPool = pool.filter(hasReading).map((entry) => entry.reading);
+
+  /**
+   * Distractors, drawn rather than filtered.
+   *
+   * `pickChoices` deduplicates and shuffles whatever pool it is handed, which
+   * is right for a deck of two hundred words and quadratic for one of six
+   * thousand: building the whole deck that way took eight seconds, nearly all
+   * of it rebuilding the same Set once per card. Three options is all it ever
+   * needs, so past a certain size it gets a short random sample of the pool
+   * instead of the pool. Below that size nothing changes.
+   */
+  const SAMPLE = 16;
+  const drawFrom = (options: string[], correct: string, barred: string[]): string[] => {
+    if (options.length <= SAMPLE) {
+      return options.filter((option) => option !== correct && !barred.includes(option));
+    }
+    const drawn: string[] = [];
+    for (let i = 0; i < SAMPLE; i++) {
+      const option = options[Math.floor(Math.random() * options.length)];
+      if (option !== correct && !barred.includes(option)) drawn.push(option);
+    }
+    return drawn;
+  };
+
+  /** The written forms of every other entry that would also be a fair answer. */
+  const rivals = (others: DuolingoEntry[] | undefined, entry: DuolingoEntry): string[] =>
+    (others ?? [])
+      .filter((other) => other.word !== entry.word)
+      .map((other) => japanese(other, config.script))
+      .filter((written): written is string => written !== null);
+
+  for (const entry of pool) {
+    const itemId = duolingoItemId(entry);
+    const meanings = meaningsOf(entry, s.lang);
+    const written = japanese(entry, config.script);
+    const writtenScript = config.script === 'romaji' ? 'latin' : 'jp';
+    const unit = units.get(entry.unitId);
+    const details = [
+      hasReading(entry) && duolingoHasKanji(entry)
+        ? `${entry.word}（${entry.reading}）— ${meanings.join(', ')}`
+        : `${entry.word} — ${meanings.join(', ')}`,
+      unit ? s.duolingo.fromUnit(unit.number, labelOf(unit, s.lang)) : '',
+    ].filter(Boolean);
+
+    if (config.modes.includes('meaning') && written !== null) {
+      const choice = config.inputModes.meaning === 'choice';
+      const homophones = (byWritten.get(written) ?? []).filter(
+        (other) => other.word !== entry.word,
+      );
+      const alsoMeans = homophones.flatMap((other) => meaningsOf(other, s.lang));
+      const rivalGlosses = homophones.map(canonical);
+      cards.push({
+        id: `duo-meaning-${entry.word}`,
+        itemId,
+        question: s.card.whatDoesThisMean,
+        prompt: written,
+        promptScript: writtenScript,
+        inputMode: config.inputModes.meaning,
+        placeholder: s.card.meaningPlaceholder(meaningLang(entry, s.lang)),
+        speech: hasReading(entry) ? entry.reading : undefined,
+        choices: choice
+          ? pickChoices(meanings[0], drawFrom(meaningPool, meanings[0], rivalGlosses))
+          : undefined,
+        answer: meanings.join(' / '),
+        answerScript: 'latin',
+        details,
+        check: choice
+          ? exact(meanings[0])
+          : (given) => checkMeaning(given, [...meanings, ...alsoMeans]),
+      });
+    }
+
+    if (config.modes.includes('recall') && written !== null) {
+      const choice = config.inputModes.recall === 'choice';
+      const alsoRight = rivals(byMeaning.get(canonical(entry).toLowerCase()), entry);
+      const accepted = [written, ...alsoRight];
+      cards.push({
+        id: `duo-recall-${entry.word}`,
+        itemId,
+        question: choice ? s.card.whichWord : s.duolingo.writeItAs[config.script],
+        prompt: meanings.join(' / '),
+        promptScript: 'latin',
+        inputMode: config.inputModes.recall,
+        placeholder: config.script === 'word' ? s.card.theWord : s.card.romajiOrKana,
+        speech: hasReading(entry) ? entry.reading : undefined,
+        choices: choice
+          ? pickChoices(written, drawFrom(writtenPool, written, alsoRight))
+          : undefined,
+        answer: written,
+        answerScript: writtenScript,
+        // Written as the course writes it there is one right spelling. Asked in
+        // kana or romaji the reading matcher applies instead, so mimasu and
+        // みます both count, exactly as they do everywhere else in the app.
+        details,
+        check:
+          choice || config.script === 'word'
+            ? (given) => accepted.includes(given.trim())
+            : (given) => checkReading(given, [entry.reading]),
+      });
+    }
+
+    if (config.modes.includes('reading') && asks('reading', config, entry)) {
+      const choice = config.inputModes.reading === 'choice';
+      cards.push({
+        id: `duo-reading-${entry.word}`,
+        itemId,
+        question: choice ? s.card.howIsThisRead : s.card.typeTheReading,
+        prompt: entry.word,
+        promptScript: 'jp',
+        promptNote: meanings[0],
+        inputMode: config.inputModes.reading,
+        placeholder: s.card.romajiOrKana,
+        speech: entry.reading,
+        choices: choice
+          ? pickChoices(entry.reading, drawFrom(readingPool, entry.reading, []))
+          : undefined,
+        answer: `${entry.reading}（${kanaToRomaji(entry.reading)}）`,
+        answerScript: 'jp',
+        details,
+        check: choice ? exact(entry.reading) : (given) => checkReading(given, [entry.reading]),
+      });
+    }
+
+    if (config.modes.includes('listening') && written !== null && hasReading(entry)) {
+      const choice = config.inputModes.listening === 'choice';
+      const alsoRight = rivals(byReading.get(entry.reading), entry);
+      const accepted = [written, ...alsoRight];
+      cards.push({
+        id: `duo-listening-${entry.word}`,
+        itemId,
+        question: choice ? s.card.whichWordHeard : s.card.writeWhatYouHear,
+        prompt: '',
+        promptScript: 'audio',
+        speech: entry.reading,
+        inputMode: config.inputModes.listening,
+        placeholder: s.card.romajiOrKana,
+        choices: choice
+          ? pickChoices(written, drawFrom(writtenPool, written, alsoRight))
+          : undefined,
+        answer:
+          config.script === 'word' && duolingoHasKanji(entry)
+            ? `${entry.word}　${entry.reading}`
+            : written,
+        answerScript: writtenScript,
+        details,
+        // Homophones are settled by ear and not by spelling, so anything read
+        // that way counts — typed, and as an option too.
+        check: choice
+          ? (given) => accepted.includes(given.trim())
+          : (given) => checkReading(given, [entry.reading]),
+      });
+    }
+  }
+
+  return cards;
 }

@@ -19,6 +19,8 @@ import type { KanaSection } from '../data/kana';
 import type {
   ConjugationMode,
   CounterMode,
+  DuolingoMode,
+  DuolingoScript,
   KanaMode,
   KanaScript,
   KanjiMode,
@@ -55,6 +57,8 @@ export const en = {
     wordsShort: 'Vocabulary',
     conjugation: 'Conjugation',
     particles: 'Particles',
+    duolingo: 'Duolingo — the course word list',
+    duolingoShort: 'Duolingo',
   },
 
   /** the title a running session carries */
@@ -66,13 +70,15 @@ export const en = {
     words: 'Vocabulary — N5',
     conjugation: 'Conjugation',
     particles: 'Particles',
+    duolingo: 'Duolingo vocabulary',
   },
 
   home: {
     intro:
       'Six decks covering N5: the kana, the kanji, the counters that never behave, the core ' +
       'vocabulary, how verbs and adjectives conjugate, and which particle a sentence takes. ' +
-      'Review what is due, or pick a deck and drill exactly what you choose.',
+      'Review what is due, or pick a deck and drill exactly what you choose. Alongside them, ' +
+      'the Duolingo course word list, unit by unit, for going back over what it taught you.',
     step: (n: number, total: number) => `Step ${n} of ${total}`,
     known: (known: number, total: number) => `${known} of ${total} known`,
     planDone: 'You have been through the whole plan',
@@ -98,6 +104,8 @@ export const en = {
     conjugationBlurb: (verbs: number, adjectives: number) =>
       `ます, て-form, ない and past, across ${verbs} verbs and ${adjectives} adjectives.`,
     particlesBlurb: (n: number) => `${n} sentences with a gap — は, が, を, に, で and the rest.`,
+    duolingoBlurb: (words: number, units: number) =>
+      `${words} words across the course's ${units} units, in the order it teaches them.`,
     notPractised: 'not practised yet',
     practised: (seen: number, total: number, unit: string, accuracy: number) =>
       `${seen} of ${total} ${unit} practised · ${accuracy}% lifetime accuracy`,
@@ -191,6 +199,30 @@ export const en = {
       `${n} of the selected words are written in kana already, so they get no reading card.`,
     wordImeNote:
       'Meaning → word with typing needs a Japanese IME. Multiple choice works everywhere.',
+
+    duolingoSelected: (words: number, cards: number) =>
+      `${words} words selected · ${cards} cards`,
+    whichUnits: 'Which units?',
+    whichUnitsHint:
+      'The stretch of the course you have covered. Open a unit to switch off words you already ' +
+      'have.',
+    unitFrom: 'From unit',
+    unitTo: 'to',
+    everyUnit: 'Every unit',
+    lastTen: 'Last ten',
+    unitWords: (n: number) => `${n} words`,
+    noUnitsInRange: 'Pick a range of units',
+    howWritten: 'How should the Japanese be written?',
+    howWrittenHint: 'This decides what you see, and what counts as an answer.',
+    duolingoImeNote:
+      'Meaning → word with typing needs a Japanese IME. Write the Japanese in kana or romaji ' +
+      'instead, or answer by multiple choice, and it works anywhere.',
+    noReadingNote: (n: number) =>
+      `${n} of the selected words are phrases no dictionary gives a single reading for. They ` +
+      'still get meaning and recall cards; they get no reading or listening card.',
+    readingNeedsWord:
+      'Reading cards are only asked when the Japanese is written the way the course writes it — ' +
+      'there is nothing to work out about みず written みず.',
 
     whatToDrill: 'What do you want to drill?',
     whatToDrillHint:
@@ -358,6 +390,65 @@ export const en = {
       recall: 'See “letter”, pick 手紙 out of four.',
       listening: 'Hear てがみ, work out which word it was.',
     } as Record<WordMode, string>,
+  },
+
+  /**
+   * The reference screen. Its own block rather than more of `setup`, because
+   * nothing here configures anything — it is the only screen in the app that
+   * asks no question.
+   */
+  browse: {
+    nav: 'Browse the material',
+    title: 'The material',
+    hint: 'Everything the app teaches, set out to be read. Nothing here is asked or scored.',
+    whichDeck: 'What do you want to read?',
+    practise: 'Practise this deck',
+    searchPlaceholder: 'Japanese, romaji or a meaning',
+    results: 'Matches',
+    found: (n: number) => `${n} found`,
+    noMatches: (query: string) => `Nothing matches “${query}”.`,
+    showingFirst: (shown: number, total: number) =>
+      `Showing the first ${shown} of ${total}. Narrow the search to see the rest.`,
+    tapToHear: 'Click any kana to hear it.',
+    soundChange: 'the sound shifts here',
+  },
+
+  duolingo: {
+    fromUnit: (n: number, name: string) => `Unit ${n} · ${name}`,
+    /** the "meaning → Japanese" question, which changes with the script */
+    writeItAs: {
+      word: 'Write the word (needs a Japanese IME)',
+      kana: 'Write it in kana',
+      romaji: 'Write it in romaji',
+    } as Record<DuolingoScript, string>,
+  },
+
+  duolingoMode: {
+    label: {
+      meaning: 'Japanese → meaning',
+      recall: 'Meaning → Japanese',
+      reading: 'Word → reading',
+      listening: 'Listening',
+    } as Record<DuolingoMode, string>,
+    blurb: {
+      meaning: 'See 食べます, answer “eat”.',
+      recall: 'See “eat”, produce 食べます.',
+      reading: 'See 食べます, answer たべます. Only for words written with kanji.',
+      listening: 'Hear たべます, work out which word it was.',
+    } as Record<DuolingoMode, string>,
+  },
+
+  duolingoScript: {
+    label: {
+      word: 'As the course writes it',
+      kana: 'Kana',
+      romaji: 'Romaji',
+    } as Record<DuolingoScript, string>,
+    blurb: {
+      word: '食べます — kanji and all, the way it appears in the app.',
+      kana: 'たべます — the same word without the kanji, and without an IME.',
+      romaji: 'tabemasu — the gentlest of the three, and typeable anywhere.',
+    } as Record<DuolingoScript, string>,
   },
 
   conjugationMode: {

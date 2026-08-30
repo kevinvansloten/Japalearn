@@ -6,7 +6,7 @@ import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
 import { useStrings } from '../i18n';
 import { blurbOf, labelOf, meaningsOf } from '../i18n/content';
-import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
+import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll, masteryColour } from './ui';
 
 const MODES: KanjiMode[] = ['meaning', 'reading', 'recall', 'vocab', 'listening'];
 
@@ -15,13 +15,6 @@ function toggle<T>(list: T[], value: T): T[] {
 }
 
 /** Green / amber / red dot from lifetime accuracy, or nothing if never seen. */
-function masteryColour(accuracy: number | null): string | undefined {
-  if (accuracy === null) return undefined;
-  if (accuracy >= 80) return 'var(--good)';
-  if (accuracy >= 50) return '#e0b341';
-  return 'var(--bad)';
-}
-
 interface Props {
   config: KanjiConfig;
   onChange: (config: KanjiConfig) => void;

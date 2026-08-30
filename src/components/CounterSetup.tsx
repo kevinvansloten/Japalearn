@@ -11,19 +11,12 @@ import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
 import { useStrings } from '../i18n';
 import { blurbOf, labelOf, meaningOf } from '../i18n/content';
-import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll } from './ui';
+import { Chip, FlowPicker, ModeCard, Panel, Segmented, SelectAll, masteryColour } from './ui';
 
 const MODES: CounterMode[] = ['reading', 'meaning', 'listening'];
 
 function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
-}
-
-function masteryColour(accuracy: number | null): string | undefined {
-  if (accuracy === null) return undefined;
-  if (accuracy >= 80) return 'var(--good)';
-  if (accuracy >= 50) return '#e0b341';
-  return 'var(--bad)';
 }
 
 interface Props {

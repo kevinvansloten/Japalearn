@@ -197,6 +197,21 @@ export function FlowPicker({
   );
 }
 
+/**
+ * The colour of an item's mastery dot, or nothing at all for an item that has
+ * never been answered — an empty dot would claim a score it does not have.
+ *
+ * Shared because four screens draw the same dot and a fifth reading of the
+ * same numbers should not disagree with the other four about where "good"
+ * starts.
+ */
+export function masteryColour(accuracy: number | null): string | undefined {
+  if (accuracy === null) return undefined;
+  if (accuracy >= 80) return 'var(--good)';
+  if (accuracy >= 50) return '#e0b341';
+  return 'var(--bad)';
+}
+
 export function SelectAll({
   all,
   none,

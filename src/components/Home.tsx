@@ -5,6 +5,7 @@ import { ALL_KANJI } from '../data/kanji';
 import { ALL_WORDS } from '../data/words';
 import { ALL_ADJECTIVES, ALL_VERBS } from '../data/conjugation';
 import { ALL_PARTICLE_SENTENCES } from '../data/particles';
+import { ALL_DUOLINGO_WORDS, DUOLINGO_UNITS, duolingoItemId } from '../data/duolingo';
 import { CURRICULUM } from '../data/curriculum';
 import type { Stage } from '../data/curriculum';
 import { stageNumber, stageProgress } from '../lib/curriculum';
@@ -29,8 +30,10 @@ interface Props {
   onWords: () => void;
   onConjugation: () => void;
   onParticles: () => void;
+  onDuolingo: () => void;
   onProgress: () => void;
   onPlan: () => void;
+  onBrowse: () => void;
   /** the stage the learner is on, or null once the plan is finished */
   stage: Stage | null;
   onStartStage: () => void;
@@ -52,8 +55,10 @@ export function Home({
   onWords,
   onConjugation,
   onParticles,
+  onDuolingo,
   onProgress,
   onPlan,
+  onBrowse,
   stage,
   onStartStage,
   onReset,
@@ -98,7 +103,16 @@ export function Home({
   const conjugation = summarise(
     [...ALL_VERBS, ...ALL_ADJECTIVES].map((v) => `conj:${v.word}`),
   );
-  const anyProgress = kana.seen + kanji.seen + counters.seen + words.seen + conjugation.seen + particles.seen > 0;
+  const duolingo = summarise(ALL_DUOLINGO_WORDS.map(duolingoItemId));
+  const anyProgress =
+    kana.seen +
+      kanji.seen +
+      counters.seen +
+      words.seen +
+      conjugation.seen +
+      particles.seen +
+      duolingo.seen >
+    0;
 
   return (
     <div className="stack">
@@ -133,6 +147,9 @@ export function Home({
           </button>
           <button type="button" className="btn ghost" onClick={onProgress}>
             {s.home.seeProgress}
+          </button>
+          <button type="button" className="btn ghost" onClick={onBrowse}>
+            {s.browse.nav}
           </button>
           {stage && (
             <button type="button" className="btn big" onClick={onStartStage}>
@@ -217,6 +234,13 @@ export function Home({
           <h2>{s.deck.particles}</h2>
           <p>{s.home.particlesBlurb(ALL_PARTICLE_SENTENCES.length)}</p>
           <Progress summary={particles} unit={s.home.unit.sentences} />
+        </button>
+
+        <button type="button" className="home-card" onClick={onDuolingo}>
+          <span className="big">たべます 電車</span>
+          <h2>{s.deck.duolingo}</h2>
+          <p>{s.home.duolingoBlurb(ALL_DUOLINGO_WORDS.length, DUOLINGO_UNITS.length)}</p>
+          <Progress summary={duolingo} unit={s.home.unit.words} />
         </button>
       </div>
 

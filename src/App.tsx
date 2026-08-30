@@ -3,6 +3,7 @@ import { KANA_GROUPS } from './data/kana';
 import type {
   ConjugationConfig,
   CounterConfig,
+  DuolingoConfig,
   KanaConfig,
   ParticleConfig,
   KanjiConfig,
@@ -29,7 +30,10 @@ import { KanjiSetup } from './components/KanjiSetup';
 import { WordSetup } from './components/WordSetup';
 import { ConjugationSetup } from './components/ConjugationSetup';
 import { ParticleSetup } from './components/ParticleSetup';
+import { DuolingoSetup } from './components/DuolingoSetup';
+import { Browse } from './components/Browse';
 import { Progress } from './components/Progress';
+import type { BrowseDeck } from './lib/browse';
 import { Quiz } from './components/Quiz';
 import { LanguagePicker } from './components/ui';
 import { LanguageProvider, useStrings } from './i18n';
@@ -80,6 +84,22 @@ const DEFAULT_CONJUGATION: ConjugationConfig = {
   order: 'shuffled',
 };
 
+/**
+ * Five units in rather than the whole course: three hundred and ten units of
+ * vocabulary as an opening screen is not a deck, it is a wall. The range is
+ * the first thing anyone changes anyway.
+ */
+const DEFAULT_DUOLINGO: DuolingoConfig = {
+  fromUnit: 1,
+  toUnit: 5,
+  excluded: [],
+  modes: ['meaning'],
+  inputModes: { meaning: 'type', recall: 'choice', reading: 'type', listening: 'type' },
+  script: 'word',
+  flow: 'mistakes',
+  order: 'shuffled',
+};
+
 const DEFAULT_PARTICLES: ParticleConfig = {
   groupIds: ['wo'],
   excluded: [],
@@ -90,7 +110,7 @@ const DEFAULT_PARTICLES: ParticleConfig = {
 
 type Screen =
   | 'home' | 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles'
-  | 'progress' | 'plan' | 'quiz';
+  | 'duolingo' | 'progress' | 'plan' | 'browse' | 'quiz';
 
 interface Run {
   /** bumped per launch so Quiz remounts with a fresh session */
@@ -98,7 +118,7 @@ interface Run {
   title: string;
   cards: Card[];
   options: SessionOptions;
-  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
+  back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'duolingo';
   /** results move items along their Leitner boxes */
   scheduled?: boolean;
 }
@@ -163,6 +183,15 @@ function Learner() {
     ...loadPref<Partial<ParticleConfig>>('particles', {}),
   }));
 
+  const [duolingoConfig, setDuolingoConfig] = useState<DuolingoConfig>(() => {
+    const saved = loadPref<Partial<DuolingoConfig>>('duolingo', {});
+    return {
+      ...DEFAULT_DUOLINGO,
+      ...saved,
+      inputModes: { ...DEFAULT_DUOLINGO.inputModes, ...saved.inputModes },
+    };
+  });
+
   // Not a deck setting: the pace is what the new-item budget is spent against.
   // Saved on the way through rather than in an effect, because the review plan
   // below reads it back out of storage and would otherwise recompute against
@@ -173,6 +202,7 @@ function Learner() {
     setPaceState(next);
   };
 
+  useEffect(() => savePref('duolingo', duolingoConfig), [duolingoConfig]);
   useEffect(() => savePref('particles', particleConfig), [particleConfig]);
   useEffect(() => savePref('conjugation', conjugationConfig), [conjugationConfig]);
   useEffect(() => savePref('words', wordConfig), [wordConfig]);
@@ -185,7 +215,7 @@ function Learner() {
     cards: Card[],
     options: SessionOptions,
     extra: {
-      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles';
+      back?: 'kana' | 'kanji' | 'counters' | 'words' | 'conjugation' | 'particles' | 'duolingo';
       scheduled?: boolean;
     } = {},
   ) => {
@@ -274,8 +304,10 @@ function Learner() {
           onWords={() => setScreen('words')}
           onConjugation={() => setScreen('conjugation')}
           onParticles={() => setScreen('particles')}
+          onDuolingo={() => setScreen('duolingo')}
           onProgress={() => setScreen('progress')}
           onPlan={() => setScreen('plan')}
+          onBrowse={() => setScreen('browse')}
           stage={stage}
           onStartStage={() => {
             if (!stage) return;
@@ -381,6 +413,41 @@ function Learner() {
               { back: 'particles' },
             )
           }
+        />
+      )}
+
+      {/*
+        * Not part of the guided plan or the review schedule: the plan is a
+        * route through N5, and this deck is a record of what one course
+        * happened to teach. It is drilled on its own terms, and its results
+        * still count towards lifetime accuracy like any other session.
+        */}
+      {screen === 'duolingo' && (
+        <DuolingoSetup
+          config={duolingoConfig}
+          onChange={setDuolingoConfig}
+          onHome={goHome}
+          onStart={(cards) =>
+            start(
+              s.run.duolingo,
+              cards,
+              { flow: duolingoConfig.flow, order: duolingoConfig.order },
+              { back: 'duolingo' },
+            )
+          }
+        />
+      )}
+
+      {/*
+        * The reference screen reads every deck but owns none of them, so the
+        * only thing it hands back is which deck you were reading — the setup
+        * screen for that deck picks it up from there.
+        */}
+      {screen === 'browse' && (
+        <Browse
+          key={version}
+          onHome={goHome}
+          onPractise={(browsed: BrowseDeck) => setScreen(browsed)}
         />
       )}
 

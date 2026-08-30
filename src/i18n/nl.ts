@@ -41,6 +41,8 @@ export const nl: Strings = {
     wordsShort: 'Woordenschat',
     conjugation: 'Vervoeging',
     particles: 'Partikels',
+    duolingo: 'Duolingo — de woordenlijst van de cursus',
+    duolingoShort: 'Duolingo',
   },
 
   run: {
@@ -51,6 +53,7 @@ export const nl: Strings = {
     words: 'Woordenschat — N5',
     conjugation: 'Vervoeging',
     particles: 'Partikels',
+    duolingo: 'Duolingo-woorden',
   },
 
   home: {
@@ -58,7 +61,8 @@ export const nl: Strings = {
       'Zes decks die N5 afdekken: de kana, de kanji, de telwoorden die zich nooit gedragen, de ' +
       'kernwoordenschat, hoe werkwoorden en bijvoeglijke naamwoorden vervoegen, en welk partikel ' +
       'een zin nodig heeft. Herhaal wat aan de beurt is, of kies een deck en oefen precies wat ' +
-      'je wilt.',
+      'je wilt. Daarnaast staat de woordenlijst van de Duolingo-cursus, unit voor unit, om ' +
+      'terug te gaan over wat die je geleerd heeft.',
     step: (n, total) => `Stap ${n} van ${total}`,
     known: (known, total) => `${known} van ${total} beheerst`,
     planDone: 'Je bent het hele plan doorgelopen',
@@ -86,6 +90,8 @@ export const nl: Strings = {
       `ます, て-vorm, ない en verleden tijd, over ${verbs} werkwoorden en ${adjectives} ` +
       'bijvoeglijke naamwoorden.',
     particlesBlurb: (n) => `${n} zinnen met een gat — は, が, を, に, で en de rest.`,
+    duolingoBlurb: (words, units) =>
+      `${words} woorden uit de ${units} units van de cursus, in de volgorde waarin die ze aanbiedt.`,
     notPractised: 'nog niet geoefend',
     practised: (seen, total, unit, accuracy) =>
       `${seen} van ${total} ${unit} geoefend · ${accuracy}% goed sinds het begin`,
@@ -180,6 +186,30 @@ export const nl: Strings = {
     kanaOnlyNote: (n) =>
       `${n} van de gekozen woorden staan al in kana, dus die krijgen geen leeskaart.`,
     wordImeNote: 'Betekenis → woord met typen vereist een Japanse IME. Meerkeuze werkt overal.',
+
+    duolingoSelected: (words, cards) => `${words} woorden geselecteerd · ${cards} kaarten`,
+    whichUnits: 'Welke units?',
+    whichUnitsHint:
+      'Het stuk van de cursus dat je gehad hebt. Klap een unit open om woorden uit te zetten ' +
+      'die je al kent.',
+    unitFrom: 'Van unit',
+    unitTo: 'tot',
+    everyUnit: 'Alle units',
+    lastTen: 'Laatste tien',
+    unitWords: (n) => `${n} woorden`,
+    noUnitsInRange: 'Kies een reeks units',
+    howWritten: 'Hoe moet het Japans geschreven worden?',
+    howWrittenHint: 'Dit bepaalt wat je ziet, en wat als antwoord telt.',
+    duolingoImeNote:
+      'Betekenis → woord met typen vereist een Japanse IME. Schrijf het Japans in kana of ' +
+      'romaji, of antwoord met meerkeuze, en het werkt overal.',
+    noReadingNote: (n) =>
+      `${n} van de geselecteerde woorden zijn uitdrukkingen waar geen woordenboek één lezing ` +
+      'voor geeft. Die krijgen wel betekenis- en terughaalkaarten, maar geen lees- of ' +
+      'luisterkaart.',
+    readingNeedsWord:
+      'Leeskaarten komen alleen langs als het Japans geschreven staat zoals de cursus het ' +
+      'schrijft — aan みず geschreven als みず valt niets uit te zoeken.',
 
     whatToDrill: 'Wat wil je oefenen?',
     whatToDrillHint:
@@ -347,6 +377,59 @@ export const nl: Strings = {
       reading: 'Je ziet 手紙, je antwoordt てがみ. Woorden die al in kana staan, slaan we over.',
       recall: 'Je ziet “brief”, je kiest 手紙 uit vier.',
       listening: 'Je hoort てがみ, je zoekt uit welk woord het was.',
+    },
+  },
+
+  browse: {
+    nav: 'Blader door de stof',
+    title: 'De stof',
+    hint: 'Alles wat de app leert, om te lezen. Hier wordt niets gevraagd en niets geteld.',
+    whichDeck: 'Wat wil je lezen?',
+    practise: 'Dit deck oefenen',
+    searchPlaceholder: 'Japans, romaji of een betekenis',
+    results: 'Gevonden',
+    found: (n) => `${n} gevonden`,
+    noMatches: (query) => `Niets komt overeen met “${query}”.`,
+    showingFirst: (shown, total) =>
+      `De eerste ${shown} van ${total} staan hier. Zoek preciezer om de rest te zien.`,
+    tapToHear: 'Klik op een kana om hem te horen.',
+    soundChange: 'hier verschuift de klank',
+  },
+
+  duolingo: {
+    fromUnit: (n, name) => `Unit ${n} · ${name}`,
+    writeItAs: {
+      word: 'Schrijf het woord (vereist een Japanse IME)',
+      kana: 'Schrijf het in kana',
+      romaji: 'Schrijf het in romaji',
+    },
+  },
+
+  duolingoMode: {
+    label: {
+      meaning: 'Japans → betekenis',
+      recall: 'Betekenis → Japans',
+      reading: 'Woord → lezing',
+      listening: 'Luisteren',
+    },
+    blurb: {
+      meaning: 'Je ziet 食べます, je antwoordt “eten”.',
+      recall: 'Je ziet “eten”, je maakt er 食べます van.',
+      reading: 'Je ziet 食べます, je antwoordt たべます. Alleen voor woorden met kanji.',
+      listening: 'Je hoort たべます, je zoekt uit welk woord het was.',
+    },
+  },
+
+  duolingoScript: {
+    label: {
+      word: 'Zoals de cursus het schrijft',
+      kana: 'Kana',
+      romaji: 'Romaji',
+    },
+    blurb: {
+      word: '食べます — mét de kanji, zoals het in de app staat.',
+      kana: 'たべます — hetzelfde woord zonder kanji, en zonder IME.',
+      romaji: 'tabemasu — de zachtste van de drie, en overal te typen.',
     },
   },
 
