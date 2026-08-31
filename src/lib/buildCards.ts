@@ -768,6 +768,8 @@ export interface DuolingoConfig {
   modes: DuolingoMode[];
   inputModes: Record<DuolingoMode, InputMode>;
   script: DuolingoScript;
+  /** Show pronunciation alongside Japanese without changing accepted answers. */
+  showRomaji?: boolean;
   flow: Flow;
   order: Order;
 }
@@ -861,6 +863,17 @@ export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Car
     .map((entry) => japanese(entry, config.script))
     .filter((written): written is string => written !== null);
   const readingPool = pool.filter(hasReading).map((entry) => entry.reading);
+  const showRomaji = config.showRomaji && config.script !== 'romaji';
+  const writtenNotes = showRomaji
+    ? Object.fromEntries(pool.filter(hasReading).map((entry) => [
+        japanese(entry, config.script)!, kanaToRomaji(entry.reading),
+      ]))
+    : undefined;
+  const readingNotes = showRomaji
+    ? Object.fromEntries(pool.filter(hasReading).map((entry) => [
+        entry.reading, kanaToRomaji(entry.reading),
+      ]))
+    : undefined;
 
   /**
    * Distractors, drawn rather than filtered.
@@ -897,11 +910,13 @@ export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Car
     const meanings = meaningsOf(entry, s.lang);
     const written = japanese(entry, config.script);
     const writtenScript = config.script === 'romaji' ? 'latin' : 'jp';
+    const romaji = showRomaji && hasReading(entry) ? kanaToRomaji(entry.reading) : undefined;
     const unit = units.get(entry.unitId);
+    const readingLabel = hasReading(entry) && duolingoHasKanji(entry)
+      ? `${entry.word}（${entry.reading}）`
+      : entry.word;
     const details = [
-      hasReading(entry) && duolingoHasKanji(entry)
-        ? `${entry.word}（${entry.reading}）— ${meanings.join(', ')}`
-        : `${entry.word} — ${meanings.join(', ')}`,
+      `${readingLabel}${romaji ? ` · ${romaji}` : ''} — ${meanings.join(', ')}`,
       unit ? s.duolingo.fromUnit(unit.number, labelOf(unit, s.lang)) : '',
     ].filter(Boolean);
 
@@ -918,6 +933,7 @@ export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Car
         question: s.card.whatDoesThisMean,
         prompt: written,
         promptScript: writtenScript,
+        promptNote: romaji,
         inputMode: config.inputModes.meaning,
         placeholder: s.card.meaningPlaceholder(meaningLang(entry, s.lang)),
         speech: hasReading(entry) ? entry.reading : undefined,
@@ -944,6 +960,7 @@ export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Car
         prompt: meanings.join(' / '),
         promptScript: 'latin',
         inputMode: config.inputModes.recall,
+        choiceNotes: choice ? writtenNotes : undefined,
         placeholder: config.script === 'word' ? s.card.theWord : s.card.romajiOrKana,
         speech: hasReading(entry) ? entry.reading : undefined,
         choices: choice
@@ -972,6 +989,7 @@ export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Car
         promptScript: 'jp',
         promptNote: meanings[0],
         inputMode: config.inputModes.reading,
+        choiceNotes: choice ? readingNotes : undefined,
         placeholder: s.card.romajiOrKana,
         speech: entry.reading,
         choices: choice
@@ -996,6 +1014,7 @@ export function buildDuolingoCards(config: DuolingoConfig, s: Strings = en): Car
         promptScript: 'audio',
         speech: entry.reading,
         inputMode: config.inputModes.listening,
+        choiceNotes: choice ? writtenNotes : undefined,
         placeholder: s.card.romajiOrKana,
         choices: choice
           ? pickChoices(written, drawFrom(writtenPool, written, alsoRight))

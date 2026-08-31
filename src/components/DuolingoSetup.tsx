@@ -28,6 +28,7 @@ import {
   type DuolingoScript,
 } from '../lib/buildCards';
 import type { Card } from '../lib/session';
+import { kanaToRomaji } from '../lib/romaji';
 import { useJapaneseVoice } from '../lib/speech';
 import { itemAccuracy, loadItemStats } from '../lib/storage';
 import { useStrings } from '../i18n';
@@ -200,7 +201,8 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
                         <button
                           key={entry.word}
                           type="button"
-                          className="item-toggle"
+                          className={config.showRomaji && hasReading(entry)
+                            ? 'item-toggle with-romaji' : 'item-toggle'}
                           aria-pressed={!config.excluded.includes(entry.word)}
                           title={`${entry.word}${
                             hasReading(entry) && hasKanji(entry) ? ` (${entry.reading})` : ''
@@ -208,6 +210,9 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
                           onClick={() => patch({ excluded: toggle(config.excluded, entry.word) })}
                         >
                           {entry.word}
+                          {config.showRomaji && hasReading(entry) && (
+                            <span className="romaji-note">{kanaToRomaji(entry.reading)}</span>
+                          )}
                           {colour && <span className="dot" style={{ background: colour }} />}
                         </button>
                       );
@@ -233,6 +238,16 @@ export function DuolingoSetup({ config, onChange, onStart, onHome }: Props) {
             />
           ))}
         </div>
+        <label className="row" style={{ gap: 8, marginTop: 16, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={config.showRomaji ?? false}
+            onChange={(event) => patch({ showRomaji: event.target.checked })}
+            aria-describedby="duo-romaji-hint"
+          />
+          {s.setup.showRomaji}
+        </label>
+        <p id="duo-romaji-hint" className="hint">{s.setup.showRomajiHint}</p>
       </Panel>
 
       <ModePicker<DuolingoMode>

@@ -152,9 +152,33 @@ export function romajiToKana(input: string): string {
   return out;
 }
 
-/** Kana -> romaji, used for showing answers and as a second comparison path. */
+/**
+ * Known expressions in the decks whose は is pronounced わ. Match whole kana
+ * phrases, not prefixes or suffixes: はい, はな and ごはん must keep their ha.
+ * A lone は stays ha here, since it could be a kana drill or the reading of 歯;
+ * kana alone cannot tell us whether an arbitrary は is a topic particle.
+ * Greetings: https://www.irodori.jpf.go.jp/assets/data/wordlist_X.pdf
+ */
+const WA_PHRASES = new Set([
+  'こんにちは', 'こんばんは', 'おなまえは', 'さんは',
+  'はちょっと', 'はすきですか', 'はありますか', 'はありません',
+  'はいますか', 'はいません', 'はだいじょうぶです',
+  'それでは', 'では', 'じつは', 'には', 'ときには',
+  'ことはありますか', 'ことはない', 'からは', 'とは', 'までは',
+  'ほとんどは', 'わけにはいかない', 'かぎりでは', 'にしては',
+  'または', 'あるいは', 'もしくは',
+]);
+
+/** Kana -> spoken romaji, used for display, search and answer checking. */
 export function kanaToRomaji(input: string): string {
-  const s = toHiragana(input);
+  const pronounced = toHiragana(input).replace(/[ぁ-ゖー]+/g, (phrase) =>
+    WA_PHRASES.has(phrase) ? phrase.replace(/は/g, 'わ') : phrase,
+  );
+  return romanizeKana(pronounced);
+}
+
+/** Literal transliteration is also accepted for learners using IME spellings. */
+function romanizeKana(s: string): string {
   let out = '';
   let i = 0;
 
@@ -225,8 +249,10 @@ export function checkReading(given: string, targets: string[]): boolean {
       const kana = tidy(variant);
       if (!kana) continue;
       if (candidates.has(kana)) return true;
-      // Second path: compare in romaji, which forgives ん/nn edge cases.
-      if (tidy(raw) === tidy(kanaToRomaji(variant))) return true;
+      // Accept the pronunciation and the spelling used to type the original
+      // kana into an IME, e.g. konnichiwa and konnichiha for こんにちは.
+      if (tidy(raw) === tidy(kanaToRomaji(variant)) ||
+          tidy(raw) === tidy(romanizeKana(variant))) return true;
     }
   }
   return false;

@@ -20,6 +20,8 @@ export interface Card {
   inputMode: InputMode;
   /** options when inputMode is 'choice' */
   choices?: string[];
+  /** Optional display hints keyed by choice; grading still uses the choice itself. */
+  choiceNotes?: Record<string, string>;
   /** placeholder for the typed answer field */
   placeholder?: string;
   /** Japanese text to read aloud: the audio prompt, and the replay on reveal */

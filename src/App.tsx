@@ -98,6 +98,7 @@ const DEFAULT_DUOLINGO: DuolingoConfig = {
   modes: ['meaning'],
   inputModes: { meaning: 'type', recall: 'choice', reading: 'type', listening: 'type' },
   script: 'word',
+  showRomaji: false,
   flow: 'mistakes',
   order: 'shuffled',
 };
@@ -487,16 +488,16 @@ function Learner() {
         />
       )}
 
-      {/*
-        * The reference screen reads every deck but owns none of them, so the
-        * only thing it hands back is which deck you were reading — the setup
-        * screen for that deck picks it up from there.
-        */}
+      {/* Browsing and practising Duolingo share the same saved romaji preference. */}
       {screen === 'browse' && (
         <Browse
           key={version}
           onHome={goHome}
           onPractise={(browsed: BrowseDeck) => setScreen(browsed)}
+          duolingoRomaji={duolingoConfig.showRomaji ?? false}
+          onDuolingoRomajiChange={(showRomaji) =>
+            setDuolingoConfig((config) => ({ ...config, showRomaji }))
+          }
         />
       )}
 

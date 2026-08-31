@@ -409,6 +409,22 @@ input {
   background: var(--bg-raised);
 }
 
+.item-toggle.with-romaji {
+  height: auto;
+  min-height: 42px;
+  max-width: 100%;
+  padding: 6px 10px;
+}
+
+.romaji-note {
+  display: block;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
 .item-toggle .dot {
   position: absolute;
   bottom: 3px;

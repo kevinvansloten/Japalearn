@@ -133,6 +133,12 @@ ok('a line matches itself by every field it shows',
 const duolingo = sectionsFor('duolingo');
 ok('search reaches deep into the Duolingo deck',
   search(duolingo, 'tabemasu').some((line) => line.jp === '食べます'));
+ok('browse finds hello by its spoken romaji',
+  search(duolingo, 'konnichiwa').some((line) => line.jp === 'こんにちは'));
+ok('browse finds good evening by its spoken romaji',
+  search(duolingo, 'konbanwa').some((line) => line.jp === 'こんばんは'));
+ok('N5 words share the corrected pronunciation search',
+  search(words, 'konnichiwa').some((line) => line.jp === 'こんにちは'));
 
 // ------------------------------------------------------------- in Dutch
 

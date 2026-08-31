@@ -322,6 +322,14 @@ in kana or romaji instead makes the same deck drillable anywhere, and asking
 for the reading is dropped in those two — there is nothing to work out about
 みず written みず.
 
+Turn on **Show romaji alongside Japanese** under the writing options to keep
+the Japanese text and add its pronunciation, for example 食べます · `tabemasu`.
+The setting is saved and applies to the unit word picker, meaning prompts,
+Japanese answer choices and answer feedback. The Duolingo deck in **Browse the
+material** shares the same toggle, including its search results. It does not
+change grading or reveal the answer in reading and listening prompts. Words
+without a known reading are left unannotated.
+
 ### The readings, and the ones there are none of
 
 duome prints a romanisation beside every word, and wherever there is a kanji in
